@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { Archive, ChevronDown, ChevronRight, MoreHorizontal, Paperclip, Plus, Upload } from "lucide-react";
+import { Archive, Minus as ChevronDown, MoreHorizontal, Paperclip, Plus, Plus as ChevronRight, Upload } from "lucide-react";
 import { upload } from "@vercel/blob/client";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -12,11 +12,11 @@ import type { TaskTreeNode } from "./tree";
 
 type Tag = { id: string; name: string; color: string; projectId: string | null };
 type Color = { property: "status" | "priority"; value: string; color: string };
-const defaults: Record<string, string> = { todo: "#71717a", in_progress: "#2563eb", waiting: "#ca8a04", blocked: "#dc2626", completed: "#16a34a", high: "#dc2626", medium: "#ea580c", low: "#16a34a", none: "#71717a" };
+const defaults: Record<string, string> = { todo: "#87909e", in_progress: "#4194f6", waiting: "#f9ab00", blocked: "#e50000", completed: "#6bc950", high: "#f50000", medium: "#f8ae00", low: "#6bc950", none: "#87909e" };
 
 export function TaskTable({ projectId, tasks, availableTags, colors, highlightedTaskId }: { projectId: string; tasks: TaskTreeNode[]; availableTags: Tag[]; colors: Color[]; highlightedTaskId?: string }) {
   const [rootComposer, setRootComposer] = useState(false); const [properties, setProperties] = useState(false);
-  return <div className="space-y-3"><div className="flex flex-wrap items-center justify-between gap-2"><Button size="sm" variant="outline" onClick={() => setRootComposer(true)}><Plus className="size-4" />New task</Button><Button size="sm" variant="ghost" onClick={() => setProperties(true)}>Properties</Button></div>{rootComposer && <Composer projectId={projectId} onClose={() => setRootComposer(false)} /> }<div className="overflow-x-auto rounded-xl border bg-background"><table className="w-full min-w-[980px] text-left text-sm"><thead className="border-b bg-muted/30 text-xs text-muted-foreground"><tr><th className="w-[33%] px-3 py-3 font-medium">Task</th><th className="px-3 py-3 font-medium">Status</th><th className="px-3 py-3 font-medium">Priority</th><th className="px-3 py-3 font-medium">Tags</th><th className="px-3 py-3 font-medium">Due date</th><th className="px-3 py-3 font-medium">Focus</th><th className="px-3 py-3 font-medium">Attachments</th><th className="px-3 py-3" /></tr></thead><tbody>{tasks.map((task) => <TaskRow key={task.id} task={task} projectId={projectId} depth={0} tags={availableTags} colors={colors} highlightedTaskId={highlightedTaskId} />)}</tbody></table></div><PropertiesDialog open={properties} onOpenChange={setProperties} projectId={projectId} tags={availableTags} colors={colors} /></div>;
+  return <div className="space-y-3"><div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border bg-card/80 p-2 shadow-sm"><Button size="sm" onClick={() => setRootComposer(true)}><Plus className="size-4" />New task</Button><Button size="sm" variant="ghost" onClick={() => setProperties(true)}>Properties</Button></div>{rootComposer && <Composer projectId={projectId} onClose={() => setRootComposer(false)} /> }<div className="overflow-x-auto rounded-2xl border bg-card shadow-sm"><table className="w-full min-w-[980px] text-left text-sm"><thead className="border-b bg-muted/45 text-xs text-muted-foreground"><tr><th className="w-[33%] px-4 py-3 font-medium">Task</th><th className="px-3 py-3 font-medium">Status</th><th className="px-3 py-3 font-medium">Priority</th><th className="px-3 py-3 font-medium">Tags</th><th className="px-3 py-3 font-medium">Due date</th><th className="px-3 py-3 font-medium">Focus</th><th className="px-3 py-3 font-medium">Attachments</th><th className="px-3 py-3" /></tr></thead><tbody>{tasks.map((task) => <TaskRow key={task.id} task={task} projectId={projectId} depth={0} tags={availableTags} colors={colors} highlightedTaskId={highlightedTaskId} />)}</tbody></table></div><PropertiesDialog open={properties} onOpenChange={setProperties} projectId={projectId} tags={availableTags} colors={colors} /></div>;
 }
 
 function TaskRow({ task, projectId, depth, tags, colors, highlightedTaskId }: { task: TaskTreeNode; projectId: string; depth: number; tags: Tag[]; colors: Color[]; highlightedTaskId?: string }) {
