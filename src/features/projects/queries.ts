@@ -1,6 +1,6 @@
-import { and, desc, eq, isNotNull, isNull } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, isNull, or } from "drizzle-orm";
 import { db } from "@/db";
-import { projects, taskAttachments, tasks } from "@/db/schema";
+import { projects, tags, taskAttachments, taskPropertyColors, taskTags, tasks } from "@/db/schema";
 import { toTaskTree, type TaskRecord } from "@/features/tasks/tree";
 import { defaultTaskQuery, filterTaskTree, hasTaskFilters, type TaskQuery } from "@/features/tasks/task-query";
 import { matchesTask, sortTasks } from "@/features/tasks/task-query";
@@ -9,10 +9,13 @@ export type ProjectSummary = typeof projects.$inferSelect & { openTaskCount: num
 
 export async function withAttachmentCounts(taskRows: (typeof tasks.$inferSelect)[]) {
   if (!taskRows.length) return [] as TaskRecord[];
-  const attachments = await db.select().from(taskAttachments);
+  const [attachments, tagRows] = await Promise.all([
+    db.select().from(taskAttachments),
+    db.select({ taskId: taskTags.taskId, id: tags.id, name: tags.name, color: tags.color, projectId: tags.projectId }).from(taskTags).innerJoin(tags, eq(taskTags.tagId, tags.id)).where(inArray(taskTags.taskId, taskRows.map((task) => task.id))),
+  ]);
   const counts = new Map<string, number>();
   attachments.forEach(({ taskId }) => counts.set(taskId, (counts.get(taskId) ?? 0) + 1));
-  return taskRows.map((task) => ({ ...task, attachmentCount: counts.get(task.id) ?? 0, attachments: attachments.filter((attachment) => attachment.taskId === task.id).map(({ id, fileName, contentType, size, createdAt }) => ({ id, fileName, contentType, size, createdAt })) }));
+  return taskRows.map((task) => ({ ...task, attachmentCount: counts.get(task.id) ?? 0, attachments: attachments.filter((attachment) => attachment.taskId === task.id).map(({ id, fileName, contentType, size, createdAt }) => ({ id, fileName, contentType, size, createdAt })), tags: tagRows.filter((tag) => tag.taskId === task.id).map((tag) => ({ id: tag.id, name: tag.name, color: tag.color, projectId: tag.projectId })) }));
 }
 
 function summarize(project: typeof projects.$inferSelect, projectTasks: TaskRecord[]): ProjectSummary {
@@ -53,4 +56,12 @@ export async function getDocumentInbox(query: TaskQuery = defaultTaskQuery) {
   const documents = sortTasks((await withAttachmentCounts(taskRows)).filter((task) => task.attachmentCount > 0 && matchesTask(task, query)), query);
   const projectNames = new Map(projectRows.map((project) => [project.id, project.name]));
   return documents.map((task) => ({ ...task, projectName: projectNames.get(task.projectId) ?? "Archived project" }));
+}
+
+export async function getTaskTableSettings(projectId: string) {
+  const [availableTags, colors] = await Promise.all([
+    db.select().from(tags).where(or(isNull(tags.projectId), eq(tags.projectId, projectId))).orderBy(tags.name),
+    db.select().from(taskPropertyColors),
+  ]);
+  return { availableTags, colors };
 }

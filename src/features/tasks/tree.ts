@@ -2,12 +2,14 @@ import type { Priority, TaskStatus } from "@/types/domain";
 import { compareTasks, defaultTaskQuery, type TaskQuery } from "./task-query";
 
 export type TaskAttachmentRecord = { id: string; fileName: string; contentType: string; size: number; createdAt: Date };
+export type TaskTagRecord = { id: string; name: string; color: string; projectId: string | null };
 export type TaskRecord = {
   id: string; projectId: string; parentTaskId: string | null; title: string; description: string | null;
   status: TaskStatus; priority: Priority; dueDate: string | null; focusDate: string | null; order: number;
   createdAt: Date; updatedAt: Date; archivedAt: Date | null;
   attachmentCount: number;
   attachments: TaskAttachmentRecord[];
+  tags: TaskTagRecord[];
 };
 
 export type TaskTreeNode = TaskRecord & { children: TaskTreeNode[]; isContext?: boolean };

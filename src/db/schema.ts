@@ -66,3 +66,18 @@ export const taskViews = pgTable("task_views", {
 }, (table) => [
   index("task_views_scope_updated_idx").on(table.projectId, table.updatedAt),
 ]);
+
+export const tags = pgTable("tags", {
+  id: uuid("id").primaryKey().defaultRandom(), name: text("name").notNull(), color: text("color").notNull().default("#64748b"),
+  projectId: uuid("project_id").references(() => projects.id, { onDelete: "cascade" }), ...timestamps,
+}, (table) => [index("tags_scope_name_idx").on(table.projectId, table.name)]);
+
+export const taskTags = pgTable("task_tags", {
+  taskId: uuid("task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }),
+  tagId: uuid("tag_id").notNull().references(() => tags.id, { onDelete: "cascade" }),
+}, (table) => [uniqueIndex("task_tags_unique_idx").on(table.taskId, table.tagId), index("task_tags_tag_idx").on(table.tagId)]);
+
+export const taskPropertyColors = pgTable("task_property_colors", {
+  id: uuid("id").primaryKey().defaultRandom(), property: text("property").notNull().$type<"status" | "priority">(), value: text("value").notNull(), color: text("color").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [uniqueIndex("task_property_colors_unique_idx").on(table.property, table.value)]);

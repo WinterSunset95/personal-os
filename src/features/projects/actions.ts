@@ -5,7 +5,7 @@ import { del } from "@vercel/blob";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db";
-import { projects, taskAttachments, tasks } from "@/db/schema";
+import { projects, tags, taskAttachments, taskPropertyColors, taskTags, tasks } from "@/db/schema";
 import { descendantIds, type TaskRecord } from "@/features/tasks/tree";
 import { priorities, projectStatuses, taskStatuses } from "@/types/domain";
 
@@ -131,3 +131,27 @@ export async function removeTaskAttachment(attachmentId: string, projectId: stri
   await db.delete(taskAttachments).where(eq(taskAttachments.id, attachmentId));
   refresh(projectId);
 }
+
+const colorInput = z.string().regex(/^#[0-9a-fA-F]{6}$/);
+const tagInput = z.object({ name: z.string().trim().min(1).max(40), color: colorInput, projectId: z.string().uuid().nullable() });
+
+export async function createTag(input: z.input<typeof tagInput>) { const value = tagInput.parse(input); if (value.projectId) await ensureActiveProject(value.projectId); const [tag] = await db.insert(tags).values(value).returning(); refresh(value.projectId ?? undefined); return tag; }
+export async function updateTag(tagId: string, input: z.input<typeof tagInput>) { const value = tagInput.parse(input); await db.update(tags).set({ ...value, updatedAt: new Date() }).where(eq(tags.id, tagId)); refresh(value.projectId ?? undefined); }
+export async function deleteTag(tagId: string) { const tag = await db.query.tags.findFirst({ where: eq(tags.id, tagId) }); if (!tag) return; await db.delete(tags).where(eq(tags.id, tagId)); refresh(tag.projectId ?? undefined); }
+export async function setTaskTags(taskId: string, projectId: string, tagIds: string[]) {
+  const ids = z.array(z.string().uuid()).max(20).parse(tagIds); await ensureActiveProject(projectId);
+  const available = await db.select().from(tags).where(inArray(tags.id, ids));
+  if (available.some((tag) => tag.projectId && tag.projectId !== projectId) || available.length !== ids.length) throw new Error("A tag is unavailable for this project.");
+  await db.transaction(async (tx) => { await tx.delete(taskTags).where(eq(taskTags.taskId, taskId)); if (ids.length) await tx.insert(taskTags).values(ids.map((tagId) => ({ taskId, tagId }))); }); refresh(projectId);
+}
+export async function updateTaskProperty(taskId: string, projectId: string, property: "status" | "priority" | "dueDate" | "focusDate", value: string) {
+  await ensureActiveProject(projectId); const base = and(eq(tasks.id, taskId), eq(tasks.projectId, projectId), isNull(tasks.archivedAt));
+  if (property === "status") await db.update(tasks).set({ status: z.enum(taskStatuses).parse(value), updatedAt: new Date() }).where(base);
+  if (property === "priority") await db.update(tasks).set({ priority: z.enum(priorities).parse(value), updatedAt: new Date() }).where(base);
+  if (property === "dueDate" || property === "focusDate") await db.update(tasks).set({ [property]: optionalDate.parse(value), updatedAt: new Date() }).where(base);
+  refresh(projectId);
+}
+export async function updatePropertyColor(property: "status" | "priority", value: string, color: string) { colorInput.parse(color); const allowed = property === "status" ? taskStatuses : priorities; if (!allowed.includes(value as never)) throw new Error("Unknown property value."); await db.insert(taskPropertyColors).values({ property, value, color }).onConflictDoUpdate({ target: [taskPropertyColors.property, taskPropertyColors.value], set: { color, updatedAt: new Date() } }); refresh(); }
+export async function duplicateTask(taskId: string, projectId: string) { const task = await db.query.tasks.findFirst({ where: and(eq(tasks.id, taskId), eq(tasks.projectId, projectId), isNull(tasks.archivedAt)) }); if (!task) throw new Error("Task is unavailable."); await createTask({ projectId, parentTaskId: task.parentTaskId, title: `${task.title} copy`, description: task.description ?? "", status: "todo", priority: task.priority, dueDate: task.dueDate ?? "", focusDate: task.focusDate ?? "" }); }
+
+async function ensureActiveProject(projectId: string) { const project = await db.query.projects.findFirst({ where: and(eq(projects.id, projectId), isNull(projects.archivedAt)) }); if (!project) throw new Error("The project is unavailable."); }
