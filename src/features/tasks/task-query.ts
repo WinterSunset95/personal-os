@@ -1,4 +1,5 @@
 import { todayIso } from "@/lib/date";
+import { z } from "zod";
 import { priorities, taskStatuses, type Priority, type TaskStatus } from "@/types/domain";
 import type { TaskRecord, TaskTreeNode } from "./tree";
 
@@ -11,6 +12,14 @@ export type TaskQuery = { sort: TaskSort; direction: "asc" | "desc"; statuses: T
 const priorityRank: Record<Priority, number> = { high: 0, medium: 1, low: 2, none: 3 };
 const statusRank: Record<TaskStatus, number> = { todo: 0, in_progress: 1, waiting: 2, blocked: 3, completed: 4 };
 export const defaultTaskQuery: TaskQuery = { sort: "priority", direction: "asc", statuses: [], priorities: [], due: null, hasAttachments: false };
+export const taskQuerySchema = z.object({
+  sort: z.enum(taskSorts),
+  direction: z.enum(["asc", "desc"]),
+  statuses: z.array(z.enum(taskStatuses)),
+  priorities: z.array(z.enum(priorities)),
+  due: z.enum(dueFilters).nullable(),
+  hasAttachments: z.boolean(),
+});
 
 export function parseTaskQuery(source: URLSearchParams | Record<string, string | string[] | undefined>): TaskQuery {
   const read = (key: string) => source instanceof URLSearchParams ? source.get(key) : Array.isArray(source[key]) ? source[key][0] : source[key];
@@ -19,6 +28,25 @@ export function parseTaskQuery(source: URLSearchParams | Record<string, string |
   const direction = read("direction") === "desc" ? "desc" : "asc";
   const due = values("due", dueFilters)[0] ?? null;
   return { sort, direction, statuses: values("status", taskStatuses), priorities: values("priority", priorities), due, hasAttachments: read("attachments") === "true" };
+}
+
+export function taskQueryToSearchParams(query: TaskQuery, viewId?: string) {
+  const params = new URLSearchParams({ sort: query.sort, direction: query.direction });
+  if (query.statuses.length) params.set("status", query.statuses.join(","));
+  if (query.priorities.length) params.set("priority", query.priorities.join(","));
+  if (query.due) params.set("due", query.due);
+  if (query.hasAttachments) params.set("attachments", "true");
+  if (viewId) params.set("view", viewId);
+  return params;
+}
+
+export function sameTaskQuery(left: TaskQuery, right: TaskQuery) {
+  return left.sort === right.sort
+    && left.direction === right.direction
+    && left.due === right.due
+    && left.hasAttachments === right.hasAttachments
+    && [...left.statuses].sort().join(",") === [...right.statuses].sort().join(",")
+    && [...left.priorities].sort().join(",") === [...right.priorities].sort().join(",");
 }
 
 export function hasTaskFilters(query: TaskQuery) {

@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
-import { type AnyPgColumn, boolean, index, integer, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { type AnyPgColumn, boolean, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import type { Priority, ProjectStatus, TaskStatus } from "@/types/domain";
+import type { TaskQuery } from "@/features/tasks/task-query";
 
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -54,4 +55,14 @@ export const taskAttachments = pgTable("task_attachments", {
   index("task_attachments_task_idx").on(table.taskId),
   index("task_attachments_created_idx").on(table.createdAt),
   uniqueIndex("task_attachments_blob_url_idx").on(table.blobUrl),
+]);
+
+export const taskViews = pgTable("task_views", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  projectId: uuid("project_id").references(() => projects.id, { onDelete: "cascade" }),
+  query: jsonb("query").$type<TaskQuery>().notNull(),
+  ...timestamps,
+}, (table) => [
+  index("task_views_scope_updated_idx").on(table.projectId, table.updatedAt),
 ]);

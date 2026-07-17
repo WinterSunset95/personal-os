@@ -4,14 +4,14 @@ import { ArrowDownUp, RotateCcw, SlidersHorizontal } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { priorityLabels, taskStatusLabels } from "@/types/domain";
-import { dueFilters, taskSorts, type TaskQuery } from "./task-query";
+import { dueFilters, taskQueryToSearchParams, taskSorts, type TaskQuery } from "./task-query";
 
 const sortLabels = { priority: "Priority", due_date: "Due date", status: "Status", updated_at: "Recently updated" } as const;
 const dueLabels = { today: "Today", this_week: "This week", overdue: "Overdue", no_due_date: "No due date" } as const;
 
 export function TaskListControls({ query }: { query: TaskQuery }) {
   const router = useRouter(); const pathname = usePathname(); const params = useSearchParams();
-  const update = (key: string, value?: string) => { const next = new URLSearchParams(params); if (value) next.set(key, value); else next.delete(key); router.replace(`${pathname}${next.size ? `?${next}` : ""}`); };
+  const update = (key: string, value?: string) => { const next = new URLSearchParams(taskQueryToSearchParams(query, params.get("view") ?? undefined)); if (value) next.set(key, value); else next.delete(key); router.replace(`${pathname}${next.size ? `?${next}` : ""}`); };
   const toggleList = (key: "status" | "priority", value: string) => { const values = new Set((params.get(key) ?? "").split(",").filter(Boolean)); if (values.has(value)) values.delete(value); else values.add(value); update(key, [...values].join(",")); };
   const chips = [
     ...query.statuses.map((status) => ({ key: "status", value: status, label: `Status: ${taskStatusLabels[status]}` })),
