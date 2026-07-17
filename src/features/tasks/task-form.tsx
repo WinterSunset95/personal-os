@@ -8,8 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { createTask, updateTask } from "@/features/projects/actions";
 import { priorities, priorityLabels, taskStatuses, taskStatusLabels, type Priority, type TaskStatus } from "@/types/domain";
+import { TaskAttachments } from "./task-attachments";
+import type { TaskAttachmentRecord } from "./tree";
 
-type Values = { id: string; projectId: string; parentTaskId: string | null; title: string; description: string | null; status: TaskStatus; priority: Priority; dueDate: string | null; focusDate: string | null };
+type Values = { id: string; projectId: string; parentTaskId: string | null; title: string; description: string | null; status: TaskStatus; priority: Priority; dueDate: string | null; focusDate: string | null; attachments: TaskAttachmentRecord[] };
 export function TaskForm({ projectId, parentTaskId = null, task }: { projectId: string; parentTaskId?: string | null; task?: Values }) {
   const [open, setOpen] = useState(false); const [pending, startTransition] = useTransition();
   const isEdit = Boolean(task);
@@ -20,6 +22,7 @@ export function TaskForm({ projectId, parentTaskId = null, task }: { projectId: 
       <label className="grid gap-1.5 text-sm">Description<Textarea name="description" defaultValue={task?.description ?? ""} /></label>
       <div className="grid grid-cols-2 gap-3"><label className="grid gap-1.5 text-sm">Status<select name="status" defaultValue={task?.status ?? "todo"} className="h-9 rounded-md border bg-background px-3 text-sm">{taskStatuses.map((status) => <option key={status} value={status}>{taskStatusLabels[status]}</option>)}</select></label><label className="grid gap-1.5 text-sm">Priority<select name="priority" defaultValue={task?.priority ?? "none"} className="h-9 rounded-md border bg-background px-3 text-sm">{priorities.map((priority) => <option key={priority} value={priority}>{priorityLabels[priority]}</option>)}</select></label></div>
       <div className="grid grid-cols-2 gap-3"><label className="grid gap-1.5 text-sm">Due date<Input name="dueDate" type="date" defaultValue={task?.dueDate ?? ""} /></label><label className="grid gap-1.5 text-sm">Focus date<Input name="focusDate" type="date" defaultValue={task?.focusDate ?? ""} /></label></div>
+      {task && <TaskAttachments taskId={task.id} projectId={projectId} attachments={task.attachments} />}
       <DialogFooter><Button type="submit" disabled={pending}>{pending ? "Saving…" : "Save task"}</Button></DialogFooter>
     </form>
   </DialogContent></Dialog>;

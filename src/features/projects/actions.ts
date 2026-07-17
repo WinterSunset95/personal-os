@@ -1,10 +1,11 @@
 "use server";
 
 import { and, eq, inArray, isNull, max } from "drizzle-orm";
+import { del } from "@vercel/blob";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db";
-import { projects, tasks } from "@/db/schema";
+import { projects, taskAttachments, tasks } from "@/db/schema";
 import { descendantIds, type TaskRecord } from "@/features/tasks/tree";
 import { priorities, projectStatuses, taskStatuses } from "@/types/domain";
 
@@ -20,7 +21,7 @@ const taskInput = z.object({
 });
 
 function refresh(projectId?: string) {
-  revalidatePath("/"); revalidatePath("/projects"); revalidatePath("/archive");
+  revalidatePath("/"); revalidatePath("/projects"); revalidatePath("/archive"); revalidatePath("/documents");
   if (projectId) revalidatePath(`/projects/${projectId}`);
 }
 
@@ -38,12 +39,32 @@ export async function updateProject(projectId: string, input: z.input<typeof pro
 }
 
 export async function archiveProject(projectId: string) {
+  const project = await db.query.projects.findFirst({ where: eq(projects.id, projectId) });
+  if (project?.isSystemInbox) throw new Error("The System Inbox cannot be archived.");
   const now = new Date();
   await db.transaction(async (tx) => {
     await tx.update(projects).set({ archivedAt: now, updatedAt: now }).where(eq(projects.id, projectId));
     await tx.update(tasks).set({ archivedAt: now, updatedAt: now }).where(eq(tasks.projectId, projectId));
   });
   refresh(projectId);
+}
+
+async function getOrCreateInbox() {
+  const existing = await db.query.projects.findFirst({ where: eq(projects.isSystemInbox, true) });
+  if (existing) return existing;
+  const [inbox] = await db.insert(projects).values({ name: "Inbox", description: "Quickly captured tasks.", status: "active", priority: "none", isSystemInbox: true }).returning();
+  return inbox;
+}
+
+export async function quickCaptureTask(title: string, projectId?: string) {
+  const trimmedTitle = z.string().trim().min(1, "Task title is required.").max(160).parse(title);
+  const project = projectId
+    ? await db.query.projects.findFirst({ where: and(eq(projects.id, projectId), isNull(projects.archivedAt)) })
+    : await getOrCreateInbox();
+  if (!project) throw new Error("The selected project is unavailable.");
+  const [last] = await db.select({ last: max(tasks.order) }).from(tasks).where(and(eq(tasks.projectId, project.id), isNull(tasks.parentTaskId)));
+  await db.insert(tasks).values({ projectId: project.id, title: trimmedTitle, status: "todo", priority: "none", order: (last?.last ?? 0) + 1 });
+  refresh(project.id);
 }
 
 export async function restoreProject(projectId: string) {
@@ -98,5 +119,15 @@ export async function restoreTask(taskId: string, projectId: string) {
   let current = byId.get(taskId);
   while (current?.parentTaskId) { ids.add(current.parentTaskId); current = byId.get(current.parentTaskId); }
   await db.update(tasks).set({ archivedAt: null, updatedAt: new Date() }).where(inArray(tasks.id, [...ids]));
+  refresh(projectId);
+}
+
+export async function removeTaskAttachment(attachmentId: string, projectId: string) {
+  const attachment = await db.query.taskAttachments.findFirst({ where: eq(taskAttachments.id, attachmentId) });
+  if (!attachment) return;
+  const task = await db.query.tasks.findFirst({ where: and(eq(tasks.id, attachment.taskId), eq(tasks.projectId, projectId)) });
+  if (!task) throw new Error("The attachment is unavailable.");
+  await del(attachment.blobUrl);
+  await db.delete(taskAttachments).where(eq(taskAttachments.id, attachmentId));
   refresh(projectId);
 }

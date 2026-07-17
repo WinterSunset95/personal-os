@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { Archive, LayoutDashboard, Layers3 } from "lucide-react";
+import { Archive, FileText, LayoutDashboard, Layers3 } from "lucide-react";
 
 const links = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/projects", label: "Projects", icon: Layers3 },
+  { href: "/documents", label: "Documents", icon: FileText },
   { href: "/archive", label: "Archive", icon: Archive },
 ];
 
