@@ -1,6 +1,4 @@
-import { desc, eq, isNull, or } from "drizzle-orm";
-import { db } from "@/db";
-import { taskViews } from "@/db/schema";
+import { TaskRepository } from "@/repositories/task.repository";
 import { taskStatuses } from "@/types/domain";
 import { defaultTaskQuery, parseTaskQuery, taskQuerySchema, type TaskQuery } from "./task-query";
 
@@ -12,14 +10,11 @@ export const builtInTaskViews = [
   { id: "builtin-waiting", name: "Waiting", query: { ...defaultTaskQuery, statuses: ["waiting"], due: null } },
 ] as const satisfies readonly { id: string; name: string; query: TaskQuery }[];
 
-export type SavedTaskView = typeof taskViews.$inferSelect;
+export type SavedTaskView = any;
 export type TaskViewOption = { id: string; name: string; query: TaskQuery; projectId: string | null; builtIn: boolean };
 
 export async function getTaskViews(projectId?: string): Promise<TaskViewOption[]> {
-  const scope = projectId
-    ? or(isNull(taskViews.projectId), eq(taskViews.projectId, projectId))
-    : isNull(taskViews.projectId);
-  const customViews = await db.select().from(taskViews).where(scope).orderBy(desc(taskViews.updatedAt));
+  const customViews = await TaskRepository.findViews(projectId ?? null);
   return [
     ...builtInTaskViews.map((view) => ({ ...view, projectId: null, builtIn: true })),
     ...customViews.map((view) => ({ ...view, query: taskQuerySchema.parse(view.query), builtIn: false })),

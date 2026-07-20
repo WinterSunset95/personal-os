@@ -1,148 +1,83 @@
 "use server";
 
-import { and, eq, inArray, isNull, max } from "drizzle-orm";
-import { del } from "@vercel/blob";
-import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { db } from "@/db";
-import { projects, tags, taskAttachments, taskPropertyColors, taskTags, tasks } from "@/db/schema";
-import { descendantIds, type TaskRecord } from "@/domain/task/tree";
-import { priorities, projectStatuses, taskStatuses } from "@/domain/task/types";
+import { ProjectService } from "@/services/project.service";
+import { TaskService } from "@/services/task.service";
+import { AttachmentService } from "@/services/attachment.service";
 import { projectInputSchema } from "@/domain/project/validation";
 import { taskInputSchema } from "@/domain/task/validation";
-
-function refresh(projectId?: string) {
-  revalidatePath("/"); revalidatePath("/projects"); revalidatePath("/archive"); revalidatePath("/documents");
-  if (projectId) revalidatePath(`/projects/${projectId}`);
-}
-
-export async function createProject(input: z.input<typeof projectInputSchema>) {
-  const value = projectInputSchema.parse(input);
-  const [project] = await db.insert(projects).values(value).returning();
-  refresh(project.id);
-  return project.id;
-}
-
-export async function updateProject(projectId: string, input: z.input<typeof projectInputSchema>) {
-  const value = projectInputSchema.parse(input);
-  await db.update(projects).set({ ...value, updatedAt: new Date() }).where(and(eq(projects.id, projectId), isNull(projects.archivedAt)));
-  refresh(projectId);
-}
-
-export async function archiveProject(projectId: string) {
-  const project = await db.query.projects.findFirst({ where: eq(projects.id, projectId) });
-  if (project?.isSystemInbox) throw new Error("The System Inbox cannot be archived.");
-  const now = new Date();
-  await db.transaction(async (tx) => {
-    await tx.update(projects).set({ archivedAt: now, updatedAt: now }).where(eq(projects.id, projectId));
-    await tx.update(tasks).set({ archivedAt: now, updatedAt: now }).where(eq(tasks.projectId, projectId));
-  });
-  refresh(projectId);
-}
-
-async function getOrCreateInbox() {
-  const existing = await db.query.projects.findFirst({ where: eq(projects.isSystemInbox, true) });
-  if (existing) return existing;
-  const [inbox] = await db.insert(projects).values({ name: "Inbox", description: "Quickly captured tasks.", status: "active", priority: "none", isSystemInbox: true }).returning();
-  return inbox;
-}
-
-export async function quickCaptureTask(title: string, projectId?: string) {
-  const trimmedTitle = z.string().trim().min(1, "Task title is required.").max(160).parse(title);
-  const project = projectId
-    ? await db.query.projects.findFirst({ where: and(eq(projects.id, projectId), isNull(projects.archivedAt)) })
-    : await getOrCreateInbox();
-  if (!project) throw new Error("The selected project is unavailable.");
-  const [last] = await db.select({ last: max(tasks.order) }).from(tasks).where(and(eq(tasks.projectId, project.id), isNull(tasks.parentTaskId)));
-  await db.insert(tasks).values({ projectId: project.id, title: trimmedTitle, status: "todo", priority: "none", order: (last?.last ?? 0) + 1 });
-  refresh(project.id);
-}
-
-export async function restoreProject(projectId: string) {
-  const now = new Date();
-  await db.transaction(async (tx) => {
-    await tx.update(projects).set({ archivedAt: null, updatedAt: now }).where(eq(projects.id, projectId));
-    await tx.update(tasks).set({ archivedAt: null, updatedAt: now }).where(eq(tasks.projectId, projectId));
-  });
-  refresh(projectId);
-}
-
-export async function createTask(input: z.input<typeof taskInputSchema>) {
-  const value = taskInputSchema.parse(input);
-  const project = await db.query.projects.findFirst({ where: and(eq(projects.id, value.projectId), isNull(projects.archivedAt)) });
-  if (!project) throw new Error("The project is unavailable.");
-  if (value.parentTaskId) {
-    const parent = await db.query.tasks.findFirst({ where: and(eq(tasks.id, value.parentTaskId), eq(tasks.projectId, value.projectId), isNull(tasks.archivedAt)) });
-    if (!parent) throw new Error("A subtask must belong to an active task in the same project.");
-  }
-  const [last] = await db.select({ last: max(tasks.order) }).from(tasks).where(and(eq(tasks.projectId, value.projectId), value.parentTaskId ? eq(tasks.parentTaskId, value.parentTaskId) : isNull(tasks.parentTaskId)));
-  await db.insert(tasks).values({ ...value, order: (last?.last ?? 0) + 1 });
-  refresh(value.projectId);
-}
-
-export async function updateTask(taskId: string, input: z.input<typeof taskInputSchema>) {
-  const value = taskInputSchema.parse(input);
-  const task = await db.query.tasks.findFirst({ where: and(eq(tasks.id, taskId), eq(tasks.projectId, value.projectId), isNull(tasks.archivedAt)) });
-  if (!task) throw new Error("The task is unavailable.");
-  await db.update(tasks).set({ title: value.title, description: value.description, status: value.status, priority: value.priority, dueDate: value.dueDate, focusDate: value.focusDate, updatedAt: new Date() }).where(eq(tasks.id, taskId));
-  refresh(value.projectId);
-}
-
-export async function toggleTaskCompletion(taskId: string, projectId: string, completed: boolean) {
-  await db.update(tasks).set({ status: completed ? "completed" : "todo", updatedAt: new Date() }).where(and(eq(tasks.id, taskId), eq(tasks.projectId, projectId), isNull(tasks.archivedAt)));
-  refresh(projectId);
-}
-
-export async function archiveTask(taskId: string, projectId: string) {
-  const allTasks = await db.select().from(tasks).where(eq(tasks.projectId, projectId));
-  const ids = descendantIds(taskId, allTasks as TaskRecord[]);
-  if (!ids.length) return;
-  await db.update(tasks).set({ archivedAt: new Date(), updatedAt: new Date() }).where(inArray(tasks.id, ids));
-  refresh(projectId);
-}
-
-export async function restoreTask(taskId: string, projectId: string) {
-  const project = await db.query.projects.findFirst({ where: and(eq(projects.id, projectId), isNull(projects.archivedAt)) });
-  if (!project) throw new Error("Restore the project before restoring its tasks.");
-  const allTasks = await db.select().from(tasks).where(eq(tasks.projectId, projectId));
-  const byId = new Map(allTasks.map((task) => [task.id, task]));
-  const ids = new Set(descendantIds(taskId, allTasks as TaskRecord[]));
-  let current = byId.get(taskId);
-  while (current?.parentTaskId) { ids.add(current.parentTaskId); current = byId.get(current.parentTaskId); }
-  await db.update(tasks).set({ archivedAt: null, updatedAt: new Date() }).where(inArray(tasks.id, [...ids]));
-  refresh(projectId);
-}
-
-export async function removeTaskAttachment(attachmentId: string, projectId: string) {
-  const attachment = await db.query.taskAttachments.findFirst({ where: eq(taskAttachments.id, attachmentId) });
-  if (!attachment) return;
-  const task = await db.query.tasks.findFirst({ where: and(eq(tasks.id, attachment.taskId), eq(tasks.projectId, projectId)) });
-  if (!task) throw new Error("The attachment is unavailable.");
-  await del(attachment.blobUrl);
-  await db.delete(taskAttachments).where(eq(taskAttachments.id, attachmentId));
-  refresh(projectId);
-}
 
 const colorInput = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 const tagInput = z.object({ name: z.string().trim().min(1).max(40), color: colorInput, projectId: z.string().uuid().nullable() });
 
-export async function createTag(input: z.input<typeof tagInput>) { const value = tagInput.parse(input); if (value.projectId) await ensureActiveProject(value.projectId); const [tag] = await db.insert(tags).values(value).returning(); refresh(value.projectId ?? undefined); return tag; }
-export async function updateTag(tagId: string, input: z.input<typeof tagInput>) { const value = tagInput.parse(input); await db.update(tags).set({ ...value, updatedAt: new Date() }).where(eq(tags.id, tagId)); refresh(value.projectId ?? undefined); }
-export async function deleteTag(tagId: string) { const tag = await db.query.tags.findFirst({ where: eq(tags.id, tagId) }); if (!tag) return; await db.delete(tags).where(eq(tags.id, tagId)); refresh(tag.projectId ?? undefined); }
-export async function setTaskTags(taskId: string, projectId: string, tagIds: string[]) {
-  const ids = z.array(z.string().uuid()).max(20).parse(tagIds); await ensureActiveProject(projectId);
-  const available = await db.select().from(tags).where(inArray(tags.id, ids));
-  if (available.some((tag) => tag.projectId && tag.projectId !== projectId) || available.length !== ids.length) throw new Error("A tag is unavailable for this project.");
-  await db.transaction(async (tx) => { await tx.delete(taskTags).where(eq(taskTags.taskId, taskId)); if (ids.length) await tx.insert(taskTags).values(ids.map((tagId) => ({ taskId, tagId }))); }); refresh(projectId);
+export async function createProject(input: z.input<typeof projectInputSchema>) {
+  return ProjectService.createProject(input);
 }
-export async function updateTaskProperty(taskId: string, projectId: string, property: "status" | "priority" | "dueDate" | "focusDate", value: string) {
-  await ensureActiveProject(projectId); const base = and(eq(tasks.id, taskId), eq(tasks.projectId, projectId), isNull(tasks.archivedAt));
-  if (property === "status") await db.update(tasks).set({ status: z.enum(taskStatuses).parse(value), updatedAt: new Date() }).where(base);
-  if (property === "priority") await db.update(tasks).set({ priority: z.enum(priorities).parse(value), updatedAt: new Date() }).where(base);
-  if (property === "dueDate" || property === "focusDate") await db.update(tasks).set({ [property]: optionalDate.parse(value), updatedAt: new Date() }).where(base);
-  refresh(projectId);
-}
-export async function updatePropertyColor(property: "status" | "priority", value: string, color: string) { colorInput.parse(color); const allowed = property === "status" ? taskStatuses : priorities; if (!allowed.includes(value as never)) throw new Error("Unknown property value."); await db.insert(taskPropertyColors).values({ property, value, color }).onConflictDoUpdate({ target: [taskPropertyColors.property, taskPropertyColors.value], set: { color, updatedAt: new Date() } }); refresh(); }
-export async function duplicateTask(taskId: string, projectId: string) { const task = await db.query.tasks.findFirst({ where: and(eq(tasks.id, taskId), eq(tasks.projectId, projectId), isNull(tasks.archivedAt)) }); if (!task) throw new Error("Task is unavailable."); await createTask({ projectId, parentTaskId: task.parentTaskId, title: `${task.title} copy`, description: task.description ?? "", status: "todo", priority: task.priority, dueDate: task.dueDate ?? "", focusDate: task.focusDate ?? "" }); }
 
-async function ensureActiveProject(projectId: string) { const project = await db.query.projects.findFirst({ where: and(eq(projects.id, projectId), isNull(projects.archivedAt)) }); if (!project) throw new Error("The project is unavailable."); }
+export async function updateProject(projectId: string, input: z.input<typeof projectInputSchema>) {
+  return ProjectService.updateProject(projectId, input);
+}
+
+export async function archiveProject(projectId: string) {
+  return ProjectService.archiveProject(projectId);
+}
+
+export async function quickCaptureTask(title: string, projectId?: string) {
+  return TaskService.quickCaptureTask(title, projectId);
+}
+
+export async function restoreProject(projectId: string) {
+  return ProjectService.restoreProject(projectId);
+}
+
+export async function createTask(input: z.input<typeof taskInputSchema>) {
+  return TaskService.createTask(input);
+}
+
+export async function updateTask(taskId: string, input: z.input<typeof taskInputSchema>) {
+  return TaskService.updateTask(taskId, input);
+}
+
+export async function toggleTaskCompletion(taskId: string, projectId: string, completed: boolean) {
+  return TaskService.toggleTaskCompletion(taskId, projectId, completed);
+}
+
+export async function archiveTask(taskId: string, projectId: string) {
+  return TaskService.archiveTask(taskId, projectId);
+}
+
+export async function restoreTask(taskId: string, projectId: string) {
+  return TaskService.restoreTask(taskId, projectId);
+}
+
+export async function removeTaskAttachment(attachmentId: string, projectId: string) {
+  return AttachmentService.removeAttachment(attachmentId, projectId);
+}
+
+export async function createTag(input: z.input<typeof tagInput>) {
+  return TaskService.createTag(input);
+}
+
+export async function updateTag(tagId: string, input: z.input<typeof tagInput>) {
+  return TaskService.updateTag(tagId, input);
+}
+
+export async function deleteTag(tagId: string) {
+  return TaskService.deleteTag(tagId);
+}
+
+export async function setTaskTags(taskId: string, projectId: string, tagIds: string[]) {
+  return TaskService.setTaskTags(taskId, projectId, tagIds);
+}
+
+export async function updateTaskProperty(taskId: string, projectId: string, property: "status" | "priority" | "dueDate" | "focusDate", value: string) {
+  return TaskService.updateTaskProperty(taskId, projectId, property, value);
+}
+
+export async function updatePropertyColor(property: "status" | "priority", value: string, color: string) {
+  return TaskService.updatePropertyColor(property, value, color);
+}
+
+export async function duplicateTask(taskId: string, projectId: string) {
+  return TaskService.duplicateTask(taskId, projectId);
+}
