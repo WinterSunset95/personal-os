@@ -3,11 +3,18 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    antigravity-nix = {
+      url = "github:jacopone/antigravity-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { self, nixpkgs }: let
+  outputs = { self, nixpkgs, antigravity-nix }: let
     system = "x86_64-linux";
-    pkgs = nixpkgs.legacyPackages.${system};
+    pkgs = import nixpkgs {
+      inherit system;
+      config.allowUnFree = true;
+    };
 
     aider-full = pkgs.aider-chat.overrideAttrs (old: {
       propagatedBuildInputs = old.propagatedBuildInputs ++ (with pkgs.python3Packages; [
@@ -26,6 +33,10 @@
 
         aider-full
         playwright-driver.browsers
+
+        # antigravity-nix
+        antigravity-nix.packages.${system}.google-antigravity-cli
+        antigravity-nix.packages.${system}.default
 
         (writeShellScriptBin "db-init" ''
           if [ ! -d "$PGDATA" ]; then
