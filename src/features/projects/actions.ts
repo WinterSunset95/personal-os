@@ -6,34 +6,25 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db";
 import { projects, tags, taskAttachments, taskPropertyColors, taskTags, tasks } from "@/db/schema";
-import { descendantIds, type TaskRecord } from "@/features/tasks/tree";
-import { priorities, projectStatuses, taskStatuses } from "@/types/domain";
-
-const optionalText = z.string().trim().max(2_000).optional().transform((value) => value || null);
-const optionalDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().or(z.literal("")).transform((value) => value || null);
-const projectInput = z.object({
-  name: z.string().trim().min(1, "Project name is required.").max(120), description: optionalText,
-  status: z.enum(projectStatuses), priority: z.enum(priorities), dueDate: optionalDate,
-});
-const taskInput = z.object({
-  projectId: z.string().uuid(), parentTaskId: z.string().uuid().nullable(), title: z.string().trim().min(1, "Task title is required.").max(160),
-  description: optionalText, status: z.enum(taskStatuses), priority: z.enum(priorities), dueDate: optionalDate, focusDate: optionalDate,
-});
+import { descendantIds, type TaskRecord } from "@/domain/task/tree";
+import { priorities, projectStatuses, taskStatuses } from "@/domain/task/types";
+import { projectInputSchema } from "@/domain/project/validation";
+import { taskInputSchema } from "@/domain/task/validation";
 
 function refresh(projectId?: string) {
   revalidatePath("/"); revalidatePath("/projects"); revalidatePath("/archive"); revalidatePath("/documents");
   if (projectId) revalidatePath(`/projects/${projectId}`);
 }
 
-export async function createProject(input: z.input<typeof projectInput>) {
-  const value = projectInput.parse(input);
+export async function createProject(input: z.input<typeof projectInputSchema>) {
+  const value = projectInputSchema.parse(input);
   const [project] = await db.insert(projects).values(value).returning();
   refresh(project.id);
   return project.id;
 }
 
-export async function updateProject(projectId: string, input: z.input<typeof projectInput>) {
-  const value = projectInput.parse(input);
+export async function updateProject(projectId: string, input: z.input<typeof projectInputSchema>) {
+  const value = projectInputSchema.parse(input);
   await db.update(projects).set({ ...value, updatedAt: new Date() }).where(and(eq(projects.id, projectId), isNull(projects.archivedAt)));
   refresh(projectId);
 }
@@ -76,8 +67,8 @@ export async function restoreProject(projectId: string) {
   refresh(projectId);
 }
 
-export async function createTask(input: z.input<typeof taskInput>) {
-  const value = taskInput.parse(input);
+export async function createTask(input: z.input<typeof taskInputSchema>) {
+  const value = taskInputSchema.parse(input);
   const project = await db.query.projects.findFirst({ where: and(eq(projects.id, value.projectId), isNull(projects.archivedAt)) });
   if (!project) throw new Error("The project is unavailable.");
   if (value.parentTaskId) {
@@ -89,8 +80,8 @@ export async function createTask(input: z.input<typeof taskInput>) {
   refresh(value.projectId);
 }
 
-export async function updateTask(taskId: string, input: z.input<typeof taskInput>) {
-  const value = taskInput.parse(input);
+export async function updateTask(taskId: string, input: z.input<typeof taskInputSchema>) {
+  const value = taskInputSchema.parse(input);
   const task = await db.query.tasks.findFirst({ where: and(eq(tasks.id, taskId), eq(tasks.projectId, value.projectId), isNull(tasks.archivedAt)) });
   if (!task) throw new Error("The task is unavailable.");
   await db.update(tasks).set({ title: value.title, description: value.description, status: value.status, priority: value.priority, dueDate: value.dueDate, focusDate: value.focusDate, updatedAt: new Date() }).where(eq(tasks.id, taskId));
