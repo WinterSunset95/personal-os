@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { taskStatuses, priorities } from "@/domain/task/types";
-import { optionalText, optionalDate } from "@/domain/project/validation";
+import { optionalText, optionalDate } from "@/domain/shared/validation";
 
 export const taskInputSchema = z.object({
   projectId: z.string().uuid(),

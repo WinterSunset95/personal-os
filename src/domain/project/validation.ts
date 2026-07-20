@@ -1,9 +1,9 @@
 import { z } from "zod";
 import { projectStatuses } from "@/domain/project/types";
 import { priorities } from "@/domain/task/types";
+import { optionalText, optionalDate } from "@/domain/shared/validation";
 
-export const optionalText = z.string().trim().max(2_000).optional().transform((value) => value || null);
-export const optionalDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().or(z.literal("")).transform((value) => value || null);
+export { optionalText, optionalDate };
 
 export const projectInputSchema = z.object({
   name: z.string().trim().min(1, "Project name is required.").max(120),

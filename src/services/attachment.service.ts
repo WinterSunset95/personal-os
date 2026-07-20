@@ -1,6 +1,6 @@
 import { AttachmentRepository } from "@/repositories/attachment.repository";
 import { TaskRepository } from "@/repositories/task.repository";
-import { del } from "@vercel/blob";
+import { BlobStorageRepository } from "@/repositories/blob-storage.repository";
 
 export const AttachmentService = {
   async findAttachmentById(id: string) {
@@ -12,7 +12,7 @@ export const AttachmentService = {
     if (!attachment) return { projectId };
     const task = await TaskRepository.findActiveById(attachment.taskId, projectId);
     if (!task) throw new Error("The attachment is unavailable.");
-    await del(attachment.blobUrl);
+    await BlobStorageRepository.deleteBlob(attachment.blobUrl);
     await AttachmentRepository.delete(attachmentId);
     return { projectId };
   },
@@ -21,4 +21,3 @@ export const AttachmentService = {
     return AttachmentRepository.create(data);
   },
 };
-

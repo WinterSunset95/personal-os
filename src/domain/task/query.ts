@@ -53,20 +53,19 @@ export function hasTaskFilters(query: TaskQuery) {
   return query.statuses.length > 0 || query.priorities.length > 0 || query.due !== null || query.hasAttachments;
 }
 
-function dueMatches(task: TaskRecord, due: DueFilter) {
+function dueMatches(task: TaskRecord, due: DueFilter, today: string = todayIso()) {
   if (due === "no_due_date") return !task.dueDate;
   if (!task.dueDate) return false;
-  const today = todayIso();
   if (due === "today") return task.dueDate === today;
   if (due === "overdue") return task.dueDate < today;
   const end = new Date(`${today}T12:00:00`); end.setDate(end.getDate() + 6);
   return task.dueDate >= today && task.dueDate <= end.toISOString().slice(0, 10);
 }
 
-export function matchesTask(task: TaskRecord, query: TaskQuery) {
+export function matchesTask(task: TaskRecord, query: TaskQuery, today: string = todayIso()) {
   return (!query.statuses.length || query.statuses.includes(task.status))
     && (!query.priorities.length || query.priorities.includes(task.priority))
-    && (!query.due || dueMatches(task, query.due))
+    && (!query.due || dueMatches(task, query.due, today))
     && (!query.hasAttachments || task.attachmentCount > 0);
 }
 
@@ -91,10 +90,10 @@ export function compareTasks(a: TaskRecord, b: TaskRecord, query: TaskQuery = de
 
 export function sortTasks<T extends TaskRecord>(items: T[], query: TaskQuery) { return [...items].sort((a, b) => compareTasks(a, b, query)); }
 
-export function filterTaskTree(nodes: TaskTreeNode[], query: TaskQuery): TaskTreeNode[] {
+export function filterTaskTree(nodes: TaskTreeNode[], query: TaskQuery, today: string = todayIso()): TaskTreeNode[] {
   return nodes.flatMap((node) => {
-    const children = filterTaskTree(node.children, query);
-    const directMatch = matchesTask(node, query);
+    const children = filterTaskTree(node.children, query, today);
+    const directMatch = matchesTask(node, query, today);
     if (!directMatch && children.length === 0) return [];
     return [{ ...node, children, isContext: !directMatch }];
   });

@@ -8,18 +8,25 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { createProject, updateProject } from "@/actions/project.actions";
+import { createProject as defaultCreateProject, updateProject as defaultUpdateProject } from "@/actions/project.actions";
 import { priorities, projectStatuses, priorityLabels, projectStatusLabels, type Priority, type ProjectStatus } from "@/types/domain";
 
 type Values = { name: string; description: string | null; status: ProjectStatus; priority: Priority; dueDate: string | null };
-export function ProjectForm({ project }: { project?: Values & { id: string } }) {
+
+export interface ProjectFormProps {
+  project?: Values & { id: string };
+  onCreateProject?: (input: any) => Promise<any>;
+  onUpdateProject?: (id: string, input: any) => Promise<any>;
+}
+
+export function ProjectForm({ project, onCreateProject = defaultCreateProject, onUpdateProject = defaultUpdateProject }: ProjectFormProps) {
   const [open, setOpen] = useState(false); const [pending, startTransition] = useTransition();
   const [status, setStatus] = useState<ProjectStatus>(project?.status ?? "active");
   const [priority, setPriority] = useState<Priority>(project?.priority ?? "none");
   const title = project ? "Edit project" : "New project";
   return <Dialog open={open} onOpenChange={setOpen}><DialogTrigger asChild><Button variant={project ? "outline" : "default"} size={project ? "sm" : "default"}>{project ? "Edit project" : <><Plus className="size-4" />New project</>}</Button></DialogTrigger><DialogContent>
     <DialogHeader><DialogTitle>{title}</DialogTitle><DialogDescription>Keep the details lightweight. You can refine them later.</DialogDescription></DialogHeader>
-    <form onSubmit={(event) => { event.preventDefault(); const form = new FormData(event.currentTarget); const input = { name: String(form.get("name") ?? ""), description: String(form.get("description") ?? ""), status, priority, dueDate: String(form.get("dueDate") ?? "") }; startTransition(async () => { if (project) await updateProject(project.id, input); else await createProject(input); setOpen(false); }); }} className="space-y-4">
+    <form onSubmit={(event) => { event.preventDefault(); const form = new FormData(event.currentTarget); const input = { name: String(form.get("name") ?? ""), description: String(form.get("description") ?? ""), status, priority, dueDate: String(form.get("dueDate") ?? "") }; startTransition(async () => { if (project) await onUpdateProject(project.id, input); else await onCreateProject(input); setOpen(false); }); }} className="space-y-4">
       <div className="grid gap-1.5"><Label htmlFor="name">Name</Label><Input id="name" name="name" defaultValue={project?.name} required maxLength={120} /></div>
       <div className="grid gap-1.5"><Label htmlFor="description">Description</Label><Textarea id="description" name="description" defaultValue={project?.description ?? ""} /></div>
       <div className="grid grid-cols-2 gap-3">

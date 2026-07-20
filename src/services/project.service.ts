@@ -7,8 +7,9 @@ import { z } from "zod";
 import { projectInputSchema } from "@/domain/project/validation";
 import { toTaskTree, type TaskRecord } from "@/domain/task/tree";
 import { defaultTaskQuery, filterTaskTree, hasTaskFilters, type TaskQuery } from "@/domain/task/query";
+import { summarizeProject, canArchiveProject, type ProjectSummary } from "@/domain/project/logic";
 
-export type ProjectSummary = Awaited<ReturnType<typeof ProjectRepository.findById>> & { openTaskCount: number; progress: number };
+export type { ProjectSummary };
 
 export const ProjectService = {
   async createProject(input: z.input<typeof projectInputSchema>) {
@@ -25,7 +26,7 @@ export const ProjectService = {
 
   async archiveProject(projectId: string) {
     const project = await ProjectRepository.findById(projectId);
-    if (project?.isSystemInbox) throw new Error("The System Inbox cannot be archived.");
+    if (!canArchiveProject(project)) throw new Error("The System Inbox cannot be archived.");
     const now = new Date();
     await TransactionRepository.runTransaction(async (tx) => {
       await ProjectRepository.archive(projectId, now, tx);
@@ -77,23 +78,13 @@ export const ProjectService = {
     }));
   },
 
-  summarize(project: any, projectTasks: TaskRecord[]): ProjectSummary {
-    const active = projectTasks.filter((task) => !task.archivedAt);
-    const completed = active.filter((task) => task.status === "completed").length;
-    return {
-      ...project,
-      openTaskCount: active.filter((task) => task.status !== "completed").length,
-      progress: active.length ? Math.round((completed / active.length) * 100) : 0,
-    };
-  },
-
   async getProjectSummaries() {
     const [projectRows, taskRows] = await Promise.all([
       ProjectRepository.findAllActive(),
       TaskRepository.findAllActive(),
     ]);
     const tasksWithAttachments = await this.withAttachmentCounts(taskRows);
-    return projectRows.map((project: any) => this.summarize(project, tasksWithAttachments.filter((task) => task.projectId === project.id)));
+    return projectRows.map((project: any) => summarizeProject(project, tasksWithAttachments.filter((task) => task.projectId === project.id)));
   },
 
   async getProjectDetail(projectId: string, query: TaskQuery = defaultTaskQuery) {
@@ -103,7 +94,7 @@ export const ProjectService = {
     const tasksWithAttachments = await this.withAttachmentCounts(taskRows);
     const taskTree = toTaskTree(tasksWithAttachments, query);
     return {
-      project: this.summarize(project, tasksWithAttachments),
+      project: summarizeProject(project, tasksWithAttachments),
       taskTree: hasTaskFilters(query) ? filterTaskTree(taskTree, query) : taskTree,
     };
   },
@@ -116,4 +107,3 @@ export const ProjectService = {
     return { archivedProjects, archivedTasks };
   },
 };
-

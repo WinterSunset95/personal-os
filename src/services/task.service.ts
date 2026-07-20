@@ -1,6 +1,8 @@
 import { TaskRepository } from "@/repositories/task.repository";
 import { ProjectRepository } from "@/repositories/project.repository";
 import { TagRepository } from "@/repositories/tag.repository";
+import { TaskViewRepository } from "@/repositories/task-view.repository";
+import { PropertyColorRepository } from "@/repositories/property-color.repository";
 import { ProjectService } from "./project.service";
 import { z } from "zod";
 import { taskInputSchema } from "@/domain/task/validation";
@@ -10,8 +12,7 @@ import { descendantIds, type TaskRecord } from "@/domain/task/tree";
 import { priorities, taskStatuses } from "@/domain/task/types";
 import { defaultTaskQuery, matchesTask, sortTasks, type TaskQuery } from "@/domain/task/query";
 import { todayIso } from "@/lib/date";
-
-const optionalDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().or(z.literal("")).transform((value) => value || null);
+import { optionalDate } from "@/domain/shared/validation";
 
 async function ensureActiveProject(projectId: string, tx?: any) {
   const project = await ProjectRepository.findActiveById(projectId, tx);
@@ -136,7 +137,7 @@ export const TaskService = {
     colorInputSchema.parse(color);
     const allowed = property === "status" ? taskStatuses : priorities;
     if (!allowed.includes(value as never)) throw new Error("Unknown property value.");
-    await TaskRepository.updatePropertyColor(property, value, color);
+    await PropertyColorRepository.updatePropertyColor(property, value, color);
   },
 
   async createTag(input: z.input<typeof tagInputSchema>) {
@@ -173,18 +174,19 @@ export const TaskService = {
   async getTaskTableSettings(projectId: string) {
     const [availableTags, colors] = await Promise.all([
       TagRepository.findAllForProjectSettings(projectId),
-      TaskRepository.findPropertyColors(),
+      PropertyColorRepository.findPropertyColors(),
     ]);
     return { availableTags, colors };
   },
 
   async getDocumentInbox(query: TaskQuery = defaultTaskQuery) {
+    const today = todayIso();
     const [taskRows, projectRows] = await Promise.all([
       TaskRepository.findAllActive(),
       ProjectRepository.findAllActive(),
     ]);
     const documents = sortTasks(
-      (await ProjectService.withAttachmentCounts(taskRows)).filter((task: any) => task.attachmentCount > 0 && matchesTask(task, query)),
+      (await ProjectService.withAttachmentCounts(taskRows)).filter((task: any) => task.attachmentCount > 0 && matchesTask(task, query, today)),
       query
     );
     const projectNames = new Map(projectRows.map((project: any) => [project.id, project.name]));
@@ -204,7 +206,7 @@ export const TaskService = {
     const sortedRecentProjects = [...recentProjects].sort((a: any, b: any) => b.updatedAt.getTime() - a.updatedAt.getTime()).slice(0, 6);
 
     const visibleTasks = sortTasks(
-      (await ProjectService.withAttachmentCounts(taskRows)).filter((task: any) => matchesTask(task, query)),
+      (await ProjectService.withAttachmentCounts(taskRows)).filter((task: any) => matchesTask(task, query, today)),
       query
     );
     const focusTasks = visibleTasks.filter((task: any) => task.status !== "completed" && (task.dueDate === today || task.focusDate === today)).slice(0, 6);
@@ -265,11 +267,11 @@ export const TaskService = {
 
   // Task Views
   async getTaskViews(projectId?: string) {
-    return TaskRepository.findViews(projectId ?? null);
+    return TaskViewRepository.findViews(projectId ?? null);
   },
 
   async findViewFirst(viewId: string) {
-    return TaskRepository.findViewFirst(viewId);
+    return TaskViewRepository.findViewFirst(viewId);
   },
 
   async createTaskView(input: z.input<typeof taskViewInputSchema>) {
@@ -277,26 +279,25 @@ export const TaskService = {
     if (value.projectId) {
       await ensureActiveProject(value.projectId);
     }
-    return TaskRepository.createView(value);
+    return TaskViewRepository.createView(value);
   },
 
   async updateTaskView(viewId: string, input: z.input<typeof taskViewInputSchema>) {
     const value = taskViewInputSchema.parse(input);
-    const existing = await TaskRepository.findViewFirst(viewId);
+    const existing = await TaskViewRepository.findViewFirst(viewId);
     if (!existing) throw new Error("Saved view is unavailable.");
     if (existing.projectId !== value.projectId) throw new Error("Saved view scope cannot be changed.");
     if (value.projectId) {
       await ensureActiveProject(value.projectId);
     }
-    await TaskRepository.updateView(viewId, { name: value.name, query: value.query });
+    await TaskViewRepository.updateView(viewId, { name: value.name, query: value.query });
     return { viewId, projectId: value.projectId };
   },
 
   async deleteTaskView(viewId: string) {
-    const existing = await TaskRepository.findViewFirst(viewId);
+    const existing = await TaskViewRepository.findViewFirst(viewId);
     if (!existing) return null;
-    await TaskRepository.deleteView(viewId);
+    await TaskViewRepository.deleteView(viewId);
     return existing.projectId;
   },
 };
-

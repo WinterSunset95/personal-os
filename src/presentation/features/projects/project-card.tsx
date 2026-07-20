@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { PriorityBadge, ProjectStatusBadge } from "@/components/status-badge";
 import { formatDate } from "@/lib/date";
-import type { ProjectSummary } from "@/services/project.service";
+import type { ProjectSummary } from "@/domain/project/logic";
 
 export function ProjectCard({ project }: { project: ProjectSummary }) {
   return <Link href={`/projects/${project.id}`} className="block"><Card className="h-full border-border/80 bg-card transition duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/5"><CardHeader className="space-y-4"><div className="flex items-start justify-between gap-3"><CardTitle className="text-base font-semibold tracking-tight">{project.name}</CardTitle><ProjectStatusBadge status={project.status} /></div><div className="flex gap-2"><PriorityBadge priority={project.priority} /></div></CardHeader>

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { ProjectService } from "@/services/project.service";
 import { TaskService } from "@/services/task.service";
+import { TagService } from "@/services/tag.service";
 import { AttachmentService } from "@/services/attachment.service";
 import { projectInputSchema } from "@/domain/project/validation";
 import { taskInputSchema } from "@/domain/task/validation";
@@ -74,23 +75,23 @@ export async function removeTaskAttachment(attachmentId: string, projectId: stri
 }
 
 export async function createTag(input: z.input<typeof tagInputSchema>): Promise<void> {
-  const tag = await TaskService.createTag(input);
+  const tag = await TagService.createTag(input);
   refresh(tag.projectId ?? undefined);
 }
 
 export async function updateTag(tagId: string, input: z.input<typeof tagInputSchema>): Promise<void> {
-  await TaskService.updateTag(tagId, input);
+  await TagService.updateTag(tagId, input);
   const value = tagInputSchema.parse(input);
   refresh(value.projectId ?? undefined);
 }
 
 export async function deleteTag(tagId: string): Promise<void> {
-  const projectId = await TaskService.deleteTag(tagId);
+  const projectId = await TagService.deleteTag(tagId);
   refresh(projectId ?? undefined);
 }
 
 export async function setTaskTags(taskId: string, projectId: string, tagIds: string[]): Promise<void> {
-  await TaskService.setTaskTags(taskId, projectId, tagIds);
+  await TagService.setTaskTags(taskId, projectId, tagIds);
   refresh(projectId);
 }
 

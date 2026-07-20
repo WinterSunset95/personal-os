@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { TaskService } from "@/services/task.service";
+import { TaskViewService } from "@/services/task-view.service";
 import { taskViewInputSchema } from "@/domain/task/views";
 
 function refresh(projectId?: string | null) {
@@ -13,17 +13,17 @@ function refresh(projectId?: string | null) {
 }
 
 export async function createTaskView(input: z.input<typeof taskViewInputSchema>) {
-  const view = await TaskService.createTaskView(input);
+  const view = await TaskViewService.createTaskView(input);
   refresh(view.projectId);
   return view.id;
 }
 
 export async function updateTaskView(viewId: string, input: z.input<typeof taskViewInputSchema>) {
-  const result = await TaskService.updateTaskView(viewId, input);
+  const result = await TaskViewService.updateTaskView(viewId, input);
   refresh(result.projectId);
 }
 
 export async function deleteTaskView(viewId: string) {
-  const projectId = await TaskService.deleteTaskView(viewId);
+  const projectId = await TaskViewService.deleteTaskView(viewId);
   refresh(projectId);
 }
