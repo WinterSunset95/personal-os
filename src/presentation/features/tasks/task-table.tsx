@@ -11,7 +11,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
-import { archiveTask, createTag, createTask, deleteTag, duplicateTask, removeTaskAttachment, setTaskTags, toggleTaskCompletion, updatePropertyColor, updateTaskProperty } from "@/features/projects/actions";
+import { archiveTask, createTag, createTask, deleteTag, duplicateTask, removeTaskAttachment, setTaskTags, toggleTaskCompletion, updatePropertyColor, updateTaskProperty } from "@/actions/project.actions";
 import { priorities, priorityLabels, taskStatuses, taskStatusLabels } from "@/types/domain";
 import type { TaskTreeNode } from "@/domain/task/tree";
 

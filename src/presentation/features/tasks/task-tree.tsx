@@ -5,7 +5,7 @@ import { Archive, ChevronDown, ChevronRight, Flag, Paperclip } from "lucide-reac
 import { Button } from "@/components/ui/button";
 import { PriorityBadge, TaskStatusBadge } from "@/components/status-badge";
 import { formatDate } from "@/lib/date";
-import { archiveTask, toggleTaskCompletion } from "@/features/projects/actions";
+import { archiveTask, toggleTaskCompletion } from "@/actions/project.actions";
 import type { TaskTreeNode } from "@/domain/task/tree";
 import { TaskForm } from "./task-form";
 

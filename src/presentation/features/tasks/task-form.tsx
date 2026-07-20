@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { createTask, updateTask } from "@/features/projects/actions";
+import { createTask, updateTask } from "@/actions/project.actions";
 import { priorities, priorityLabels, taskStatuses, taskStatusLabels, type Priority, type TaskStatus } from "@/types/domain";
 import { TaskAttachments } from "./task-attachments";
 import type { TaskAttachmentRecord } from "@/domain/task/tree";

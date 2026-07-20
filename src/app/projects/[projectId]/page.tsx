@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { PriorityBadge, ProjectStatusBadge } from "@/components/status-badge";
 import { formatDate } from "@/lib/date";
-import { archiveProject } from "@/features/projects/actions";
+import { archiveProject } from "@/actions/project.actions";
 import { ProjectForm } from "@/features/projects/project-form";
 import { ProjectService } from "@/services/project.service";
 import { TaskService } from "@/services/task.service";

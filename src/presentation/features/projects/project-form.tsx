@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { createProject, updateProject } from "./actions";
+import { createProject, updateProject } from "@/actions/project.actions";
 import { priorities, projectStatuses, priorityLabels, projectStatusLabels, type Priority, type ProjectStatus } from "@/types/domain";
 
 type Values = { name: string; description: string | null; status: ProjectStatus; priority: Priority; dueDate: string | null };

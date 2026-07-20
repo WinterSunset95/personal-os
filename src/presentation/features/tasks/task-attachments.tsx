@@ -4,7 +4,7 @@ import { upload } from "@vercel/blob/client";
 import { Download, Paperclip, Trash2, Upload } from "lucide-react";
 import { useRef, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
-import { removeTaskAttachment } from "@/features/projects/actions";
+import { removeTaskAttachment } from "@/actions/project.actions";
 import type { TaskAttachmentRecord } from "@/domain/task/tree";
 
 export function TaskAttachments({ taskId, projectId, attachments }: { taskId: string; projectId: string; attachments: TaskAttachmentRecord[] }) {

@@ -5,7 +5,7 @@ import { Plus, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { quickCaptureTask } from "@/features/projects/actions";
+import { quickCaptureTask } from "@/actions/project.actions";
 
 export function QuickCapture({ projects }: { projects: { id: string; name: string; isSystemInbox: boolean }[] }) {
   const [title, setTitle] = useState(""); const [projectId, setProjectId] = useState(""); const [pending, startTransition] = useTransition();
