@@ -10,7 +10,12 @@ import { tagInputSchema, colorInputSchema } from "@/domain/tag/validation";
 import { taskViewInputSchema } from "@/domain/task/views";
 import { descendantIds, type TaskRecord } from "@/domain/task/tree";
 import { priorities, taskStatuses } from "@/domain/task/types";
-import { defaultTaskQuery, matchesTask, sortTasks, type TaskQuery } from "@/domain/task/query";
+import {
+  defaultTaskQuery,
+  matchesTask,
+  sortTasks,
+  type TaskQuery,
+} from "@/domain/task/query";
 import { todayIso } from "@/lib/date";
 import { optionalDate } from "@/domain/shared/validation";
 
@@ -25,7 +30,12 @@ export const TaskService = {
   },
 
   async quickCaptureTask(title: string, projectId?: string) {
-    const trimmedTitle = z.string().trim().min(1, "Task title is required.").max(160).parse(title);
+    const trimmedTitle = z
+      .string()
+      .trim()
+      .min(1, "Task title is required.")
+      .max(160)
+      .parse(title);
     const project = projectId
       ? await ProjectRepository.findActiveById(projectId)
       : await ProjectService.getOrCreateInbox();
@@ -50,10 +60,19 @@ export const TaskService = {
     const value = taskInputSchema.parse(input);
     await ensureActiveProject(value.projectId);
     if (value.parentTaskId) {
-      const parent = await TaskRepository.findActiveById(value.parentTaskId, value.projectId);
-      if (!parent) throw new Error("A subtask must belong to an active task in the same project.");
+      const parent = await TaskRepository.findActiveById(
+        value.parentTaskId,
+        value.projectId,
+      );
+      if (!parent)
+        throw new Error(
+          "A subtask must belong to an active task in the same project.",
+        );
     }
-    const lastOrder = await TaskRepository.getMaxOrder(value.projectId, value.parentTaskId);
+    const lastOrder = await TaskRepository.getMaxOrder(
+      value.projectId,
+      value.parentTaskId,
+    );
     const task = await TaskRepository.create({
       ...value,
       order: lastOrder + 1,
@@ -77,7 +96,11 @@ export const TaskService = {
     return { taskId, projectId: value.projectId };
   },
 
-  async toggleTaskCompletion(taskId: string, projectId: string, completed: boolean) {
+  async toggleTaskCompletion(
+    taskId: string,
+    projectId: string,
+    completed: boolean,
+  ) {
     await TaskRepository.update(taskId, {
       status: completed ? "completed" : "todo",
     });
@@ -121,22 +144,38 @@ export const TaskService = {
     });
   },
 
-  async updateTaskProperty(taskId: string, projectId: string, property: "status" | "priority" | "dueDate" | "focusDate", value: string) {
+  async updateTaskProperty(
+    taskId: string,
+    projectId: string,
+    property: "status" | "priority" | "dueDate" | "focusDate",
+    value: string,
+  ) {
     await ensureActiveProject(projectId);
     if (property === "status") {
-      await TaskRepository.update(taskId, { status: z.enum(taskStatuses).parse(value) });
+      await TaskRepository.update(taskId, {
+        status: z.enum(taskStatuses).parse(value),
+      });
     } else if (property === "priority") {
-      await TaskRepository.update(taskId, { priority: z.enum(priorities).parse(value) });
+      await TaskRepository.update(taskId, {
+        priority: z.enum(priorities).parse(value),
+      });
     } else if (property === "dueDate" || property === "focusDate") {
-      await TaskRepository.update(taskId, { [property]: optionalDate.parse(value) });
+      await TaskRepository.update(taskId, {
+        [property]: optionalDate.parse(value),
+      });
     }
     return { taskId, projectId };
   },
 
-  async updatePropertyColor(property: "status" | "priority", value: string, color: string) {
+  async updatePropertyColor(
+    property: "status" | "priority",
+    value: string,
+    color: string,
+  ) {
     colorInputSchema.parse(color);
     const allowed = property === "status" ? taskStatuses : priorities;
-    if (!allowed.includes(value as never)) throw new Error("Unknown property value.");
+    if (!allowed.includes(value as never))
+      throw new Error("Unknown property value.");
     await PropertyColorRepository.updatePropertyColor(property, value, color);
   },
 
@@ -164,7 +203,12 @@ export const TaskService = {
     const ids = z.array(z.string().uuid()).max(20).parse(tagIds);
     await ensureActiveProject(projectId);
     const available = await TagRepository.findTagsByIds(ids);
-    if (available.some((tag: any) => tag.projectId && tag.projectId !== projectId) || available.length !== ids.length) {
+    if (
+      available.some(
+        (tag: any) => tag.projectId && tag.projectId !== projectId,
+      ) ||
+      available.length !== ids.length
+    ) {
       throw new Error("A tag is unavailable for this project.");
     }
     await TagRepository.setTaskTags(taskId, ids);
@@ -186,10 +230,15 @@ export const TaskService = {
       ProjectRepository.findAllActive(),
     ]);
     const documents = sortTasks(
-      (await ProjectService.withAttachmentCounts(taskRows)).filter((task: any) => task.attachmentCount > 0 && matchesTask(task, query, today)),
-      query
+      (await ProjectService.withAttachmentCounts(taskRows)).filter(
+        (task: any) =>
+          task.attachmentCount > 0 && matchesTask(task, query, today),
+      ),
+      query,
     );
-    const projectNames = new Map(projectRows.map((project: any) => [project.id, project.name]));
+    const projectNames = new Map(
+      projectRows.map((project: any) => [project.id, project.name]),
+    );
     return documents.map((task: any) => ({
       ...task,
       projectName: projectNames.get(task.projectId) ?? "Archived project",
@@ -203,29 +252,68 @@ export const TaskService = {
       ProjectService.getProjectSummaries(),
       ProjectRepository.findAllActive(),
     ]);
-    const sortedRecentProjects = [...recentProjects].sort((a: any, b: any) => b.updatedAt.getTime() - a.updatedAt.getTime()).slice(0, 6);
+    const sortedRecentProjects = [...recentProjects]
+      .sort((a: any, b: any) => b.updatedAt.getTime() - a.updatedAt.getTime())
+      .slice(0, 6);
 
     const visibleTasks = sortTasks(
-      (await ProjectService.withAttachmentCounts(taskRows)).filter((task: any) => matchesTask(task, query, today)),
-      query
+      (await ProjectService.withAttachmentCounts(taskRows)).filter(
+        (task: any) => matchesTask(task, query, today),
+      ),
+      query,
     );
-    const focusTasks = visibleTasks.filter((task: any) => task.status !== "completed" && (task.dueDate === today || task.focusDate === today)).slice(0, 6);
-    const highPriorityTasks = visibleTasks.filter((task: any) => task.status !== "completed" && task.priority === "high").slice(0, 6);
-    const waitingTasks = visibleTasks.filter((task: any) => task.status === "waiting").slice(0, 6);
-    const recentTasks = [...visibleTasks].sort((a: any, b: any) => b.updatedAt.getTime() - a.updatedAt.getTime()).slice(0, 6);
+    const focusTasks = visibleTasks
+      .filter(
+        (task: any) =>
+          task.status !== "completed" &&
+          (task.dueDate === today || task.focusDate === today),
+      )
+      .slice(0, 6);
+    const highPriorityTasks = visibleTasks
+      .filter(
+        (task: any) => task.status !== "completed" && task.priority === "high",
+      )
+      .slice(0, 6);
+    const waitingTasks = visibleTasks
+      .filter((task: any) => task.status === "waiting")
+      .slice(0, 6);
+    const recentTasks = [...visibleTasks]
+      .sort((a: any, b: any) => b.updatedAt.getTime() - a.updatedAt.getTime())
+      .slice(0, 6);
 
     return {
       focusTasks: focusTasks.map((task: any) => ({
         ...task,
-        source: task.dueDate === today && task.focusDate === today ? "Due today · Focused" : task.dueDate === today ? "Due today" : "Focused",
+        source:
+          task.dueDate === today && task.focusDate === today
+            ? "Due today · Focused"
+            : task.dueDate === today
+              ? "Due today"
+              : "Focused",
       })),
       highPriorityTasks,
       waitingTasks,
-      activeProjects: activeProjects.filter((project: any) => project.status === "active").slice(0, 6),
+      activeProjects: activeProjects
+        .filter((project: any) => project.status === "active")
+        .slice(0, 6),
       recent: [
-        ...sortedRecentProjects.map((project: any) => ({ id: project.id, label: project.name, type: "Project" as const, updatedAt: project.updatedAt, href: `/projects/${project.id}` })),
-        ...recentTasks.map((task: any) => ({ id: task.id, label: task.title, type: "Task" as const, updatedAt: task.updatedAt, href: `/projects/${task.projectId}` })),
-      ].sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()).slice(0, 6),
+        ...sortedRecentProjects.map((project: any) => ({
+          id: project.id,
+          label: project.name,
+          type: "Project" as const,
+          updatedAt: project.updatedAt,
+          href: `/projects/${project.id}`,
+        })),
+        ...recentTasks.map((task: any) => ({
+          id: task.id,
+          label: task.title,
+          type: "Task" as const,
+          updatedAt: task.updatedAt,
+          href: `/projects/${task.projectId}`,
+        })),
+      ]
+        .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
+        .slice(0, 6),
     };
   },
 
@@ -235,9 +323,14 @@ export const TaskService = {
       TaskRepository.findAllActive(),
       ProjectRepository.findAllActive(),
     ]);
-    const projectMap = new Map<string, any>(projectRows.map((p: any) => [p.id, p]));
-    const activeTasks = taskRows.filter((task: any) => projectMap.has(task.projectId));
-    const taskRowsWithAttachments = await ProjectService.withAttachmentCounts(activeTasks);
+    const projectMap = new Map<string, any>(
+      projectRows.map((p: any) => [p.id, p]),
+    );
+    const activeTasks = taskRows.filter((task: any) =>
+      projectMap.has(task.projectId),
+    );
+    const taskRowsWithAttachments =
+      await ProjectService.withAttachmentCounts(activeTasks);
 
     return taskRowsWithAttachments
       .filter((task: any) => {
@@ -282,15 +375,22 @@ export const TaskService = {
     return TaskViewRepository.createView(value);
   },
 
-  async updateTaskView(viewId: string, input: z.input<typeof taskViewInputSchema>) {
+  async updateTaskView(
+    viewId: string,
+    input: z.input<typeof taskViewInputSchema>,
+  ) {
     const value = taskViewInputSchema.parse(input);
     const existing = await TaskViewRepository.findViewFirst(viewId);
     if (!existing) throw new Error("Saved view is unavailable.");
-    if (existing.projectId !== value.projectId) throw new Error("Saved view scope cannot be changed.");
+    if (existing.projectId !== value.projectId)
+      throw new Error("Saved view scope cannot be changed.");
     if (value.projectId) {
       await ensureActiveProject(value.projectId);
     }
-    await TaskViewRepository.updateView(viewId, { name: value.name, query: value.query });
+    await TaskViewRepository.updateView(viewId, {
+      name: value.name,
+      query: value.query,
+    });
     return { viewId, projectId: value.projectId };
   },
 

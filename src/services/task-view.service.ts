@@ -25,15 +25,22 @@ export const TaskViewService = {
     return TaskViewRepository.createView(value);
   },
 
-  async updateTaskView(viewId: string, input: z.input<typeof taskViewInputSchema>) {
+  async updateTaskView(
+    viewId: string,
+    input: z.input<typeof taskViewInputSchema>,
+  ) {
     const value = taskViewInputSchema.parse(input);
     const existing = await TaskViewRepository.findViewFirst(viewId);
     if (!existing) throw new Error("Saved view is unavailable.");
-    if (existing.projectId !== value.projectId) throw new Error("Saved view scope cannot be changed.");
+    if (existing.projectId !== value.projectId)
+      throw new Error("Saved view scope cannot be changed.");
     if (value.projectId) {
       await ensureActiveProject(value.projectId);
     }
-    await TaskViewRepository.updateView(viewId, { name: value.name, query: value.query });
+    await TaskViewRepository.updateView(viewId, {
+      name: value.name,
+      query: value.query,
+    });
     return { viewId, projectId: value.projectId };
   },
 

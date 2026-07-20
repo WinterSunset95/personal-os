@@ -1,4 +1,10 @@
-export const taskStatuses = ["todo", "in_progress", "waiting", "blocked", "completed"] as const;
+export const taskStatuses = [
+  "todo",
+  "in_progress",
+  "waiting",
+  "blocked",
+  "completed",
+] as const;
 export const priorities = ["none", "low", "medium", "high"] as const;
 
 export type TaskStatus = (typeof taskStatuses)[number];

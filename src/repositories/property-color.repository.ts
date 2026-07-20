@@ -6,10 +6,18 @@ export const PropertyColorRepository = {
     return tx.select().from(taskPropertyColors);
   },
 
-  async updatePropertyColor(property: "status" | "priority", value: string, color: string, tx: DbClient = db) {
-    await tx.insert(taskPropertyColors).values({ property, value, color }).onConflictDoUpdate({
-      target: [taskPropertyColors.property, taskPropertyColors.value],
-      set: { color, updatedAt: new Date() }
-    });
-  }
+  async updatePropertyColor(
+    property: "status" | "priority",
+    value: string,
+    color: string,
+    tx: DbClient = db,
+  ) {
+    await tx
+      .insert(taskPropertyColors)
+      .values({ property, value, color })
+      .onConflictDoUpdate({
+        target: [taskPropertyColors.property, taskPropertyColors.value],
+        set: { color, updatedAt: new Date() },
+      });
+  },
 };

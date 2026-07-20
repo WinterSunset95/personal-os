@@ -6,7 +6,9 @@ export function todayIso() {
 
 export function formatDate(value: string | null) {
   if (!value) return "No due date";
-  return new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric" }).format(
-    new Date(`${value}T12:00:00`),
-  );
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date(`${value}T12:00:00`));
 }

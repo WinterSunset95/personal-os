@@ -12,13 +12,18 @@ function refresh(projectId?: string | null) {
   if (projectId) revalidatePath(`/projects/${projectId}`);
 }
 
-export async function createTaskView(input: z.input<typeof taskViewInputSchema>) {
+export async function createTaskView(
+  input: z.input<typeof taskViewInputSchema>,
+) {
   const view = await TaskViewService.createTaskView(input);
   refresh(view.projectId);
   return view.id;
 }
 
-export async function updateTaskView(viewId: string, input: z.input<typeof taskViewInputSchema>) {
+export async function updateTaskView(
+  viewId: string,
+  input: z.input<typeof taskViewInputSchema>,
+) {
   const result = await TaskViewService.updateTaskView(viewId, input);
   refresh(result.projectId);
 }

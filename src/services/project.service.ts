@@ -6,8 +6,17 @@ import { TransactionRepository } from "@/repositories/transaction.repository";
 import { z } from "zod";
 import { projectInputSchema } from "@/domain/project/validation";
 import { toTaskTree, type TaskRecord } from "@/domain/task/tree";
-import { defaultTaskQuery, filterTaskTree, hasTaskFilters, type TaskQuery } from "@/domain/task/query";
-import { summarizeProject, canArchiveProject, type ProjectSummary } from "@/domain/project/logic";
+import {
+  defaultTaskQuery,
+  filterTaskTree,
+  hasTaskFilters,
+  type TaskQuery,
+} from "@/domain/task/query";
+import {
+  summarizeProject,
+  canArchiveProject,
+  type ProjectSummary,
+} from "@/domain/project/logic";
 
 export type { ProjectSummary };
 
@@ -18,7 +27,10 @@ export const ProjectService = {
     return project.id;
   },
 
-  async updateProject(projectId: string, input: z.input<typeof projectInputSchema>) {
+  async updateProject(
+    projectId: string,
+    input: z.input<typeof projectInputSchema>,
+  ) {
     const value = projectInputSchema.parse(input);
     await ProjectRepository.update(projectId, value);
     return projectId;
@@ -26,12 +38,17 @@ export const ProjectService = {
 
   async archiveProject(projectId: string) {
     const project = await ProjectRepository.findById(projectId);
-    if (!canArchiveProject(project)) throw new Error("The System Inbox cannot be archived.");
+    if (!canArchiveProject(project))
+      throw new Error("The System Inbox cannot be archived.");
     const now = new Date();
     await TransactionRepository.runTransaction(async (tx) => {
       await ProjectRepository.archive(projectId, now, tx);
       const tasks = await TaskRepository.findAllByProject(projectId, tx);
-      await TaskRepository.archiveMany(tasks.map((t: any) => t.id), now, tx);
+      await TaskRepository.archiveMany(
+        tasks.map((t: any) => t.id),
+        now,
+        tx,
+      );
     });
     return projectId;
   },
@@ -40,7 +57,10 @@ export const ProjectService = {
     await TransactionRepository.runTransaction(async (tx) => {
       await ProjectRepository.restore(projectId, tx);
       const tasks = await TaskRepository.findAllByProject(projectId, tx);
-      await TaskRepository.restoreMany(tasks.map((t: any) => t.id), tx);
+      await TaskRepository.restoreMany(
+        tasks.map((t: any) => t.id),
+        tx,
+      );
     });
     return projectId;
   },
@@ -56,7 +76,7 @@ export const ProjectService = {
         priority: "none",
         isSystemInbox: true,
       },
-      tx
+      tx,
     );
   },
 
@@ -64,17 +84,35 @@ export const ProjectService = {
     if (!taskRows.length) return [] as TaskRecord[];
     const [attachments, tagRows] = await Promise.all([
       AttachmentRepository.findAll(tx),
-      TagRepository.findTagsForTasks(taskRows.map((task: any) => task.id), tx),
+      TagRepository.findTagsForTasks(
+        taskRows.map((task: any) => task.id),
+        tx,
+      ),
     ]);
     const counts = new Map<string, number>();
-    attachments.forEach(({ taskId }: { taskId: string }) => counts.set(taskId, (counts.get(taskId) ?? 0) + 1));
+    attachments.forEach(({ taskId }: { taskId: string }) =>
+      counts.set(taskId, (counts.get(taskId) ?? 0) + 1),
+    );
     return taskRows.map((task: any) => ({
       ...task,
       attachmentCount: counts.get(task.id) ?? 0,
       attachments: attachments
         .filter((attachment: any) => attachment.taskId === task.id)
-        .map(({ id, fileName, contentType, size, createdAt }: any) => ({ id, fileName, contentType, size, createdAt })),
-      tags: tagRows.filter((tag: any) => tag.taskId === task.id).map((tag: any) => ({ id: tag.id, name: tag.name, color: tag.color, projectId: tag.projectId })),
+        .map(({ id, fileName, contentType, size, createdAt }: any) => ({
+          id,
+          fileName,
+          contentType,
+          size,
+          createdAt,
+        })),
+      tags: tagRows
+        .filter((tag: any) => tag.taskId === task.id)
+        .map((tag: any) => ({
+          id: tag.id,
+          name: tag.name,
+          color: tag.color,
+          projectId: tag.projectId,
+        })),
     }));
   },
 
@@ -84,10 +122,18 @@ export const ProjectService = {
       TaskRepository.findAllActive(),
     ]);
     const tasksWithAttachments = await this.withAttachmentCounts(taskRows);
-    return projectRows.map((project: any) => summarizeProject(project, tasksWithAttachments.filter((task) => task.projectId === project.id)));
+    return projectRows.map((project: any) =>
+      summarizeProject(
+        project,
+        tasksWithAttachments.filter((task) => task.projectId === project.id),
+      ),
+    );
   },
 
-  async getProjectDetail(projectId: string, query: TaskQuery = defaultTaskQuery) {
+  async getProjectDetail(
+    projectId: string,
+    query: TaskQuery = defaultTaskQuery,
+  ) {
     const project = await ProjectRepository.findActiveById(projectId);
     if (!project) return null;
     const taskRows = await TaskRepository.findAllActiveByProject(projectId);
@@ -95,7 +141,9 @@ export const ProjectService = {
     const taskTree = toTaskTree(tasksWithAttachments, query);
     return {
       project: summarizeProject(project, tasksWithAttachments),
-      taskTree: hasTaskFilters(query) ? filterTaskTree(taskTree, query) : taskTree,
+      taskTree: hasTaskFilters(query)
+        ? filterTaskTree(taskTree, query)
+        : taskTree,
     };
   },
 

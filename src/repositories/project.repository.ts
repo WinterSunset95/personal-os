@@ -24,28 +24,52 @@ export const ProjectRepository = {
   },
 
   async findAllActive(tx: DB = db) {
-    return tx.select().from(projects).where(isNull(projects.archivedAt)).orderBy(desc(projects.updatedAt));
+    return tx
+      .select()
+      .from(projects)
+      .where(isNull(projects.archivedAt))
+      .orderBy(desc(projects.updatedAt));
   },
 
   async findAllArchived(tx: DB = db) {
-    return tx.select().from(projects).where(isNotNull(projects.archivedAt)).orderBy(desc(projects.archivedAt));
+    return tx
+      .select()
+      .from(projects)
+      .where(isNotNull(projects.archivedAt))
+      .orderBy(desc(projects.archivedAt));
   },
 
-  async create(data: Omit<typeof projects.$inferInsert, "id" | "createdAt" | "updatedAt">, tx: DB = db) {
+  async create(
+    data: Omit<typeof projects.$inferInsert, "id" | "createdAt" | "updatedAt">,
+    tx: DB = db,
+  ) {
     const [project] = await tx.insert(projects).values(data).returning();
     return project;
   },
 
-  async update(id: string, data: Partial<Omit<typeof projects.$inferInsert, "id">>, tx: DB = db) {
-    await tx.update(projects).set({ ...data, updatedAt: new Date() }).where(eq(projects.id, id));
+  async update(
+    id: string,
+    data: Partial<Omit<typeof projects.$inferInsert, "id">>,
+    tx: DB = db,
+  ) {
+    await tx
+      .update(projects)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(projects.id, id));
   },
 
   async archive(id: string, archivedAt: Date = new Date(), tx: DB = db) {
-    await tx.update(projects).set({ archivedAt, updatedAt: archivedAt }).where(eq(projects.id, id));
+    await tx
+      .update(projects)
+      .set({ archivedAt, updatedAt: archivedAt })
+      .where(eq(projects.id, id));
   },
 
   async restore(id: string, tx: DB = db) {
     const now = new Date();
-    await tx.update(projects).set({ archivedAt: null, updatedAt: now }).where(eq(projects.id, id));
-  }
+    await tx
+      .update(projects)
+      .set({ archivedAt: null, updatedAt: now })
+      .where(eq(projects.id, id));
+  },
 };

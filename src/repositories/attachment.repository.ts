@@ -23,7 +23,10 @@ export const AttachmentRepository = {
     return tx.select().from(taskAttachments);
   },
 
-  async create(data: Omit<typeof taskAttachments.$inferInsert, "id" | "createdAt">, tx: DB = db) {
+  async create(
+    data: Omit<typeof taskAttachments.$inferInsert, "id" | "createdAt">,
+    tx: DB = db,
+  ) {
     const [attachment] = await tx
       .insert(taskAttachments)
       .values(data)
@@ -34,5 +37,5 @@ export const AttachmentRepository = {
 
   async delete(id: string, tx: DB = db) {
     await tx.delete(taskAttachments).where(eq(taskAttachments.id, id));
-  }
+  },
 };

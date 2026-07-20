@@ -1,5 +1,11 @@
 import Link from "next/link";
-import { ArrowUpRight, CalendarDays, CheckCircle2, Clock3, Hourglass } from "lucide-react";
+import {
+  ArrowUpRight,
+  CalendarDays,
+  CheckCircle2,
+  Clock3,
+  Hourglass,
+} from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDate } from "@/lib/date";
 import { TaskService } from "@/services/task.service";
@@ -7,10 +13,17 @@ import { QuickCapture } from "@/features/dashboard/quick-capture";
 import { ProjectCard } from "@/features/projects/project-card";
 import { TaskListControls } from "@/features/tasks/task-list-controls";
 import { SavedViews } from "@/features/tasks/saved-views";
-import { getTaskViews, resolveTaskViewQuery } from "@/features/tasks/task-views";
+import {
+  getTaskViews,
+  resolveTaskViewQuery,
+} from "@/features/tasks/task-views";
 
 export const dynamic = "force-dynamic";
-export default async function Home({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const params = await searchParams;
   const views = await getTaskViews();
   const { query, selectedView } = resolveTaskViewQuery(params, views);
@@ -19,67 +32,145 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
     <section className="space-y-7">
       <header className="flex flex-wrap items-end justify-between gap-4 pt-1">
         <div>
-          <p className="mb-2 text-xs font-medium uppercase tracking-[0.16em] text-primary">Personal workspace</p>
-            <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Good morning, Manav.</h1>
-          <p className="mt-2 text-sm text-muted-foreground">A calmer view of what deserves your attention today.</p>
+          <p className="mb-2 text-xs font-medium uppercase tracking-[0.16em] text-primary">
+            Personal workspace
+          </p>
+          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+            Good morning, Manav.
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            A calmer view of what deserves your attention today.
+          </p>
         </div>
         <div className="rounded-xl border bg-card px-4 py-3 text-sm shadow-sm">
           <span className="text-muted-foreground">Your progress</span>
-          <span className="ml-2 font-semibold text-primary">{data.activeProjects.length} active projects</span>
+          <span className="ml-2 font-semibold text-primary">
+            {data.activeProjects.length} active projects
+          </span>
         </div>
       </header>
       <QuickCapture projects={data.activeProjects} />
       <div className="space-y-3">
-        <SavedViews query={query} views={views} selectedViewId={selectedView?.id} />
+        <SavedViews
+          query={query}
+          views={views}
+          selectedViewId={selectedView?.id}
+        />
         <TaskListControls query={query} />
       </div>
       <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-        <DashboardList title="Today’s Focus" icon={CalendarDays} empty="Nothing scheduled or focused for today." accent>
-          {data.focusTasks.map((task) => <TaskLink key={task.id} href={`/projects/${task.projectId}?task=${task.id}`} title={task.title} detail={task.source} />)}
+        <DashboardList
+          title="Today’s Focus"
+          icon={CalendarDays}
+          empty="Nothing scheduled or focused for today."
+          accent
+        >
+          {data.focusTasks.map((task) => (
+            <TaskLink
+              key={task.id}
+              href={`/projects/${task.projectId}?task=${task.id}`}
+              title={task.title}
+              detail={task.source}
+            />
+          ))}
         </DashboardList>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
-          <DashboardList title="High Priority" icon={CheckCircle2} empty="No high-priority tasks right now.">
-            {data.highPriorityTasks.map((task) => <TaskLink key={task.id} href={`/projects/${task.projectId}?task=${task.id}`} title={task.title} detail={task.dueDate ? formatDate(task.dueDate) : "No due date"} />)}
+          <DashboardList
+            title="High Priority"
+            icon={CheckCircle2}
+            empty="No high-priority tasks right now."
+          >
+            {data.highPriorityTasks.map((task) => (
+              <TaskLink
+                key={task.id}
+                href={`/projects/${task.projectId}?task=${task.id}`}
+                title={task.title}
+                detail={task.dueDate ? formatDate(task.dueDate) : "No due date"}
+              />
+            ))}
           </DashboardList>
-          <DashboardList title="Waiting On" icon={Hourglass} empty="Nothing is waiting on someone else.">
-            {data.waitingTasks.map((task) => <TaskLink key={task.id} href={`/projects/${task.projectId}?task=${task.id}`} title={task.title} detail={task.dueDate ? formatDate(task.dueDate) : "No due date"} />)}
+          <DashboardList
+            title="Waiting On"
+            icon={Hourglass}
+            empty="Nothing is waiting on someone else."
+          >
+            {data.waitingTasks.map((task) => (
+              <TaskLink
+                key={task.id}
+                href={`/projects/${task.projectId}?task=${task.id}`}
+                title={task.title}
+                detail={task.dueDate ? formatDate(task.dueDate) : "No due date"}
+              />
+            ))}
           </DashboardList>
         </div>
       </div>
       <div>
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-semibold tracking-tight">Active projects</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Where your meaningful work is moving forward.</p>
+            <h2 className="text-xl font-semibold tracking-tight">
+              Active projects
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Where your meaningful work is moving forward.
+            </p>
           </div>
-          <Link href="/projects" className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">View all <ArrowUpRight className="size-4" /></Link>
+          <Link
+            href="/projects"
+            className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+          >
+            View all <ArrowUpRight className="size-4" />
+          </Link>
         </div>
-        {
-          data.activeProjects.length ? 
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {data.activeProjects.map((project: any) => <ProjectCard key={project.id} project={project} />)}
-            </div> 
-              : 
-            <Empty text="No active projects yet." />
-        }
+        {data.activeProjects.length ? (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {data.activeProjects.map((project: any) => (
+              <ProjectCard key={project.id} project={project} />
+            ))}
+          </div>
+        ) : (
+          <Empty text="No active projects yet." />
+        )}
       </div>
-      <DashboardList title="Recently Updated" icon={Clock3} empty="Your recent work will appear here.">
-        {
-          data.recent.map((item) =>
-            <Link key={`${item.type}-${item.id}`} href={item.href} className="flex items-center justify-between gap-3 rounded-lg px-2 py-3 text-sm hover:bg-muted/70">
-              <span className="truncate font-medium">{item.label}</span>
-              <span className="shrink-0 rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">{item.type}</span>
-            </Link>
-          )
-        }
+      <DashboardList
+        title="Recently Updated"
+        icon={Clock3}
+        empty="Your recent work will appear here."
+      >
+        {data.recent.map((item) => (
+          <Link
+            key={`${item.type}-${item.id}`}
+            href={item.href}
+            className="flex items-center justify-between gap-3 rounded-lg px-2 py-3 text-sm hover:bg-muted/70"
+          >
+            <span className="truncate font-medium">{item.label}</span>
+            <span className="shrink-0 rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">
+              {item.type}
+            </span>
+          </Link>
+        ))}
       </DashboardList>
     </section>
-  )
+  );
 }
 
-function DashboardList({ title, icon: Icon, empty, children, accent = false }: { title: string; icon: typeof CalendarDays; empty: string; children: React.ReactNode; accent?: boolean }) { 
+function DashboardList({
+  title,
+  icon: Icon,
+  empty,
+  children,
+  accent = false,
+}: {
+  title: string;
+  icon: typeof CalendarDays;
+  empty: string;
+  children: React.ReactNode;
+  accent?: boolean;
+}) {
   return (
-    <Card className={`border-border/80 shadow-sm ${accent ? "bg-card" : "bg-card/80"}`}>
+    <Card
+      className={`border-border/80 shadow-sm ${accent ? "bg-card" : "bg-card/80"}`}
+    >
       <CardHeader className="flex-row items-center justify-between gap-2 space-y-0">
         <CardTitle className="flex items-center gap-2 text-base font-semibold">
           <span className="grid size-7 place-items-center rounded-lg bg-primary/10 text-primary">
@@ -89,23 +180,47 @@ function DashboardList({ title, icon: Icon, empty, children, accent = false }: {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {children ? <div className="divide-y">{children}</div> : <p className="py-7 text-sm text-muted-foreground">{empty}</p>}
+        {children ? (
+          <div className="divide-y">{children}</div>
+        ) : (
+          <p className="py-7 text-sm text-muted-foreground">{empty}</p>
+        )}
       </CardContent>
     </Card>
-  ); 
+  );
 }
 
-function TaskLink({ href, title, detail }: { href: string; title: string; detail: string }) {
+function TaskLink({
+  href,
+  title,
+  detail,
+}: {
+  href: string;
+  title: string;
+  detail: string;
+}) {
   return (
-    <Link href={href} className="group flex items-center justify-between gap-3 px-1 py-3 text-sm">
+    <Link
+      href={href}
+      className="group flex items-center justify-between gap-3 px-1 py-3 text-sm"
+    >
       <span className="min-w-0">
-        <span className="block truncate font-medium group-hover:text-primary">{title}</span>
-        <span className="mt-0.5 block text-xs text-muted-foreground">{detail}</span>
-      </span><ArrowUpRight className="size-4 shrink-0 text-muted-foreground opacity-0 transition group-hover:opacity-100" />
+        <span className="block truncate font-medium group-hover:text-primary">
+          {title}
+        </span>
+        <span className="mt-0.5 block text-xs text-muted-foreground">
+          {detail}
+        </span>
+      </span>
+      <ArrowUpRight className="size-4 shrink-0 text-muted-foreground opacity-0 transition group-hover:opacity-100" />
     </Link>
-  ); 
+  );
 }
 
 function Empty({ text }: { text: string }) {
-  return <div className="rounded-2xl border border-dashed bg-card px-5 py-12 text-center text-sm text-muted-foreground">{text}</div>; 
+  return (
+    <div className="rounded-2xl border border-dashed bg-card px-5 py-12 text-center text-sm text-muted-foreground">
+      {text}
+    </div>
+  );
 }

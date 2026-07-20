@@ -15,7 +15,10 @@ export type ProjectSummary = {
   progress: number;
 };
 
-export function summarizeProject(project: any, projectTasks: TaskRecord[]): ProjectSummary {
+export function summarizeProject(
+  project: any,
+  projectTasks: TaskRecord[],
+): ProjectSummary {
   const active = projectTasks.filter((task) => !task.archivedAt);
   const completed = active.filter((task) => task.status === "completed").length;
   return {
@@ -25,7 +28,9 @@ export function summarizeProject(project: any, projectTasks: TaskRecord[]): Proj
   };
 }
 
-export function canArchiveProject(project: { isSystemInbox?: boolean } | null | undefined): boolean {
+export function canArchiveProject(
+  project: { isSystemInbox?: boolean } | null | undefined,
+): boolean {
   if (project?.isSystemInbox) {
     return false;
   }

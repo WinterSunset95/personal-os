@@ -34,7 +34,12 @@ export const TagService = {
     const ids = z.array(z.string().uuid()).max(20).parse(tagIds);
     await ensureActiveProject(projectId);
     const available = await TagRepository.findTagsByIds(ids);
-    if (available.some((tag: any) => tag.projectId && tag.projectId !== projectId) || available.length !== ids.length) {
+    if (
+      available.some(
+        (tag: any) => tag.projectId && tag.projectId !== projectId,
+      ) ||
+      available.length !== ids.length
+    ) {
       throw new Error("A tag is unavailable for this project.");
     }
     await TagRepository.setTaskTags(taskId, ids);

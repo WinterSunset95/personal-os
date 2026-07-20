@@ -1,8 +1,19 @@
 import type { Priority, TaskStatus } from "@/domain/task/types";
 import { compareTasks, defaultTaskQuery, type TaskQuery } from "./query";
 
-export type TaskAttachmentRecord = { id: string; fileName: string; contentType: string; size: number; createdAt: Date };
-export type TaskTagRecord = { id: string; name: string; color: string; projectId: string | null };
+export type TaskAttachmentRecord = {
+  id: string;
+  fileName: string;
+  contentType: string;
+  size: number;
+  createdAt: Date;
+};
+export type TaskTagRecord = {
+  id: string;
+  name: string;
+  color: string;
+  projectId: string | null;
+};
 export type TaskRecord = {
   id: string;
   projectId: string;
@@ -22,10 +33,21 @@ export type TaskRecord = {
   tags: TaskTagRecord[];
 };
 
-export type TaskTreeNode = TaskRecord & { children: TaskTreeNode[]; isContext?: boolean };
+export type TaskTreeNode = TaskRecord & {
+  children: TaskTreeNode[];
+  isContext?: boolean;
+};
 
-export function toTaskTree(records: TaskRecord[], query: TaskQuery = defaultTaskQuery): TaskTreeNode[] {
-  const nodes = new Map(records.map((task) => [task.id, { ...task, children: [] as TaskTreeNode[] }]));
+export function toTaskTree(
+  records: TaskRecord[],
+  query: TaskQuery = defaultTaskQuery,
+): TaskTreeNode[] {
+  const nodes = new Map(
+    records.map((task) => [
+      task.id,
+      { ...task, children: [] as TaskTreeNode[] },
+    ]),
+  );
   const roots: TaskTreeNode[] = [];
   for (const node of nodes.values()) {
     const parent = node.parentTaskId ? nodes.get(node.parentTaskId) : undefined;
@@ -40,14 +62,23 @@ export function toTaskTree(records: TaskRecord[], query: TaskQuery = defaultTask
   return roots;
 }
 
-export function descendantIds(taskId: string, records: Pick<TaskRecord, "id" | "parentTaskId">[]) {
+export function descendantIds(
+  taskId: string,
+  records: Pick<TaskRecord, "id" | "parentTaskId">[],
+) {
   const children = new Map<string, string[]>();
   records.forEach((task) => {
     if (!task.parentTaskId) return;
-    children.set(task.parentTaskId, [...(children.get(task.parentTaskId) ?? []), task.id]);
+    children.set(task.parentTaskId, [
+      ...(children.get(task.parentTaskId) ?? []),
+      task.id,
+    ]);
   });
   const ids: string[] = [];
-  const visit = (id: string) => { ids.push(id); (children.get(id) ?? []).forEach(visit); };
+  const visit = (id: string) => {
+    ids.push(id);
+    (children.get(id) ?? []).forEach(visit);
+  };
   visit(taskId);
   return ids;
 }
