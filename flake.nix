@@ -34,6 +34,8 @@
         aider-full
         playwright-driver.browsers
 
+        graphviz
+
         # antigravity-nix
         antigravity-nix.packages.${system}.google-antigravity-cli
         antigravity-nix.packages.${system}.default
@@ -65,6 +67,12 @@
           else
             echo "postgres: No server running."
           fi
+        '')
+
+        (writeShellScriptBin "gen-graph" ''
+          echo "📊 Mapping dependency graph for src/..."
+          npx depcruise src --output-type dot | dot -T svg > dependency-graph.svg
+          echo "✅ Graph successfully generated at dependency-graph.svg"
         '')
       ];
       shellHook = ''
