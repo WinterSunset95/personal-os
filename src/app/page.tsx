@@ -57,7 +57,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
         {
           data.activeProjects.length ? 
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {data.activeProjects.map((project) => <ProjectCard key={project.id} project={project} />)}
+              {data.activeProjects.map((project: any) => <ProjectCard key={project.id} project={project} />)}
             </div> 
               : 
             <Empty text="No active projects yet." />

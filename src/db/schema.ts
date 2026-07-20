@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
 import { type AnyPgColumn, boolean, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import type { Priority, ProjectStatus, TaskStatus } from "@/types/domain";
-import type { TaskQuery } from "@/features/tasks/task-query";
+import type { TaskQuery } from "@/domain/task/query";
 
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
