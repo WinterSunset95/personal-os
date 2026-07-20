@@ -29,6 +29,10 @@ async function ensureActiveProject(projectId: string, tx = db) {
 }
 
 export const TaskService = {
+  async findTaskById(id: string) {
+    return TaskRepository.findById(id);
+  },
+
   async quickCaptureTask(title: string, projectId?: string) {
     const trimmedTitle = z.string().trim().min(1, "Task title is required.").max(160).parse(title);
     const project = projectId
@@ -269,5 +273,38 @@ export const TaskService = {
           tags: task.tags
         };
       });
+  },
+
+  // Task Views
+  async getTaskViews(projectId?: string) {
+    return TaskRepository.findViews(projectId ?? null);
+  },
+
+  async findViewFirst(viewId: string) {
+    return TaskRepository.findViewFirst(viewId);
+  },
+
+  async createTaskView(input: { name: string; projectId: string | null; query: any }) {
+    if (input.projectId) {
+      await ensureActiveProject(input.projectId);
+    }
+    return TaskRepository.createView(input);
+  },
+
+  async updateTaskView(viewId: string, input: { name: string; projectId: string | null; query: any }) {
+    const existing = await TaskRepository.findViewFirst(viewId);
+    if (!existing) throw new Error("Saved view is unavailable.");
+    if (existing.projectId !== input.projectId) throw new Error("Saved view scope cannot be changed.");
+    if (input.projectId) {
+      await ensureActiveProject(input.projectId);
+    }
+    await TaskRepository.updateView(viewId, { name: input.name, query: input.query });
+  },
+
+  async deleteTaskView(viewId: string) {
+    const existing = await TaskRepository.findViewFirst(viewId);
+    if (!existing) return null;
+    await TaskRepository.deleteView(viewId);
+    return existing.projectId;
   }
 };

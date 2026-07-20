@@ -5,7 +5,7 @@ import { Search } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { searchTasks } from "./search-actions";
+import { searchTasks } from "@/features/projects/actions";
 
 type Result = Awaited<ReturnType<typeof searchTasks>>[number];
 export function GlobalSearch() {

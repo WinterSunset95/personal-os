@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { createTaskView, deleteTaskView, updateTaskView } from "./task-view-actions";
-import { sameTaskQuery, taskQueryToSearchParams, type TaskQuery } from "./task-query";
+import { sameTaskQuery, taskQueryToSearchParams, type TaskQuery } from "@/domain/task/query";
 import type { TaskViewOption } from "./task-views";
 import { usePathname, useRouter } from "next/navigation";
 

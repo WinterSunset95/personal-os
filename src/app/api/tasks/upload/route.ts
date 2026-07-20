@@ -1,5 +1,5 @@
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
-import { TaskRepository } from "@/repositories/task.repository";
+import { TaskService } from "@/services/task.service";
 import { AttachmentService } from "@/services/attachment.service";
 
 const allowedContentTypes = [
@@ -19,7 +19,7 @@ export async function POST(request: Request) {
       onBeforeGenerateToken: async (pathname, clientPayload) => {
         const payload = JSON.parse(clientPayload ?? "{}") as { taskId?: string; fileSize?: number };
         if (!payload.taskId) throw new Error("A task is required for uploads.");
-        const task = await TaskRepository.findById(payload.taskId);
+        const task = await TaskService.findTaskById(payload.taskId);
         if (!task || task.archivedAt || !pathname.startsWith(`tasks/${task.id}/`)) {
           throw new Error("The task is unavailable.");
         }

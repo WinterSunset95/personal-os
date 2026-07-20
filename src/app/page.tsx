@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArrowUpRight, CalendarDays, CheckCircle2, Clock3, Hourglass } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDate } from "@/lib/date";
-import { getDashboardData } from "@/features/dashboard/queries";
+import { TaskService } from "@/services/task.service";
 import { QuickCapture } from "@/features/dashboard/quick-capture";
 import { ProjectCard } from "@/features/projects/project-card";
 import { TaskListControls } from "@/features/tasks/task-list-controls";
@@ -14,7 +14,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
   const params = await searchParams;
   const views = await getTaskViews();
   const { query, selectedView } = resolveTaskViewQuery(params, views);
-  const data = await getDashboardData(query);
+  const data = await TaskService.getDashboardData(query);
   return (
     <section className="space-y-7">
       <header className="flex flex-wrap items-end justify-between gap-4 pt-1">

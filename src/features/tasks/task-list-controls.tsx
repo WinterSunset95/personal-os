@@ -7,7 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { priorityLabels, taskStatusLabels } from "@/types/domain";
-import { dueFilters, taskQueryToSearchParams, taskSorts, type TaskQuery } from "./task-query";
+import { dueFilters, taskQueryToSearchParams, taskSorts, type TaskQuery } from "@/domain/task/query";
 
 const sortLabels = { priority: "Priority", due_date: "Due date", status: "Status", updated_at: "Recently updated" } as const;
 const dueLabels = { today: "Today", this_week: "This week", overdue: "Overdue", no_due_date: "No due date" } as const;

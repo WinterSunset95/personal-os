@@ -1,6 +1,6 @@
-import { TaskRepository } from "@/repositories/task.repository";
+import { TaskService } from "@/services/task.service";
 import { taskStatuses } from "@/types/domain";
-import { defaultTaskQuery, parseTaskQuery, taskQuerySchema, type TaskQuery } from "./task-query";
+import { defaultTaskQuery, parseTaskQuery, taskQuerySchema, type TaskQuery } from "@/domain/task/query";
 
 const incompleteStatuses = taskStatuses.filter((status) => status !== "completed");
 
@@ -14,7 +14,7 @@ export type SavedTaskView = any;
 export type TaskViewOption = { id: string; name: string; query: TaskQuery; projectId: string | null; builtIn: boolean };
 
 export async function getTaskViews(projectId?: string): Promise<TaskViewOption[]> {
-  const customViews = await TaskRepository.findViews(projectId ?? null);
+  const customViews = await TaskService.getTaskViews(projectId);
   return [
     ...builtInTaskViews.map((view) => ({ ...view, projectId: null, builtIn: true })),
     ...customViews.map((view) => ({ ...view, query: taskQuerySchema.parse(view.query), builtIn: false })),

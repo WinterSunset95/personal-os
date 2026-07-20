@@ -81,3 +81,7 @@ export async function updatePropertyColor(property: "status" | "priority", value
 export async function duplicateTask(taskId: string, projectId: string) {
   return TaskService.duplicateTask(taskId, projectId);
 }
+
+export async function searchTasks(term: string) {
+  return TaskService.searchTasks(term);
+}

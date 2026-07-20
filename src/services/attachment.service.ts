@@ -12,6 +12,10 @@ function refresh(projectId?: string) {
 }
 
 export const AttachmentService = {
+  async findAttachmentById(id: string) {
+    return AttachmentRepository.findById(id);
+  },
+
   async removeAttachment(attachmentId: string, projectId: string) {
     const attachment = await AttachmentRepository.findById(attachmentId);
     if (!attachment) return;
