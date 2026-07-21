@@ -5,12 +5,18 @@ import {
 } from "@/features/projects/archive-list";
 import { ProjectService } from "@/services/project.service";
 import { formatDate } from "@/lib/date";
+import { projects, tasks } from "@/db/schema";
+
+type ProjectDbRow = typeof projects.$inferSelect;
+type TaskDbRow = typeof tasks.$inferSelect;
+
 export const dynamic = "force-dynamic";
+
 export default async function ArchivePage() {
   const { archivedProjects, archivedTasks } =
     await ProjectService.getArchivedProjects();
   const taskProjects = new Set<string>(
-    archivedTasks.map((task: any) => task.projectId as string),
+    archivedTasks.map((task: TaskDbRow) => task.projectId),
   );
   return (
     <section className="space-y-7">
@@ -33,7 +39,7 @@ export default async function ArchivePage() {
         </div>
       ) : (
         <div className="space-y-4">
-          {archivedProjects.map((project: any) => (
+          {archivedProjects.map((project: ProjectDbRow) => (
             <article
               key={project.id}
               className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border bg-card p-5 shadow-sm"
@@ -54,7 +60,7 @@ export default async function ArchivePage() {
             .filter(
               (projectId: string) =>
                 !archivedProjects.some(
-                  (project: any) => project.id === projectId,
+                  (project: ProjectDbRow) => project.id === projectId,
                 ),
             )
             .map((projectId: string) => (
@@ -65,8 +71,8 @@ export default async function ArchivePage() {
                 <h2 className="font-semibold">Archived tasks</h2>
                 <div className="mt-3 divide-y">
                   {archivedTasks
-                    .filter((task: any) => task.projectId === projectId)
-                    .map((task: any) => (
+                    .filter((task: TaskDbRow) => task.projectId === projectId)
+                    .map((task: TaskDbRow) => (
                       <div
                         key={task.id}
                         className="flex items-center justify-between gap-3 py-3"

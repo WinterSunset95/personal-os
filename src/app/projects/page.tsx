@@ -2,7 +2,10 @@ import { FolderPlus } from "lucide-react";
 import { ProjectCard } from "@/features/projects/project-card";
 import { ProjectForm } from "@/features/projects/project-form";
 import { ProjectService } from "@/services/project.service";
+import type { ProjectSummary } from "@/domain/project/logic";
+
 export const dynamic = "force-dynamic";
+
 export default async function ProjectsPage() {
   const projects = await ProjectService.getProjectSummaries();
   return (
@@ -23,7 +26,7 @@ export default async function ProjectsPage() {
       </div>
       {projects.length ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {projects.map((project: any) => (
+          {projects.map((project: ProjectSummary) => (
             <ProjectCard key={project.id} project={project} />
           ))}
         </div>

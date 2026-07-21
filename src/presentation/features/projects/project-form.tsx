@@ -26,6 +26,8 @@ import {
   createProject as defaultCreateProject,
   updateProject as defaultUpdateProject,
 } from "@/actions/project.actions";
+import { projectInputSchema } from "@/domain/project/validation";
+import { z } from "zod";
 import {
   priorities,
   projectStatuses,
@@ -45,8 +47,8 @@ type Values = {
 
 export interface ProjectFormProps {
   project?: Values & { id: string };
-  onCreateProject?: (input: any) => Promise<any>;
-  onUpdateProject?: (id: string, input: any) => Promise<any>;
+  onCreateProject?: (input: z.input<typeof projectInputSchema>) => Promise<string>;
+  onUpdateProject?: (id: string, input: z.input<typeof projectInputSchema>) => Promise<void>;
 }
 
 export function ProjectForm({

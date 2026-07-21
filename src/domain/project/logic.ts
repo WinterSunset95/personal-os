@@ -16,7 +16,7 @@ export type ProjectSummary = {
 };
 
 export function summarizeProject(
-  project: any,
+  project: Omit<ProjectSummary, "openTaskCount" | "progress">,
   projectTasks: TaskRecord[],
 ): ProjectSummary {
   const active = projectTasks.filter((task) => !task.archivedAt);

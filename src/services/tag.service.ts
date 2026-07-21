@@ -1,10 +1,13 @@
 import { TagRepository } from "@/repositories/tag.repository";
 import { ProjectRepository } from "@/repositories/project.repository";
-import { TagRepository as TagRepo } from "@/repositories/tag.repository";
+import { DbClient } from "@/db";
+import { tags } from "@/db/schema";
 import { z } from "zod";
 import { tagInputSchema } from "@/domain/tag/validation";
 
-async function ensureActiveProject(projectId: string, tx?: any) {
+type TagDbRow = typeof tags.$inferSelect;
+
+async function ensureActiveProject(projectId: string, tx?: DbClient) {
   const project = await ProjectRepository.findActiveById(projectId, tx);
   if (!project) throw new Error("The project is unavailable.");
 }
@@ -36,7 +39,7 @@ export const TagService = {
     const available = await TagRepository.findTagsByIds(ids);
     if (
       available.some(
-        (tag: any) => tag.projectId && tag.projectId !== projectId,
+        (tag: TagDbRow) => tag.projectId && tag.projectId !== projectId,
       ) ||
       available.length !== ids.length
     ) {

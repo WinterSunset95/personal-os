@@ -58,7 +58,7 @@ import {
   taskStatuses,
   taskStatusLabels,
 } from "@/types/domain";
-import type { TaskTreeNode } from "@/domain/task/tree";
+import type { TaskTreeNode, TaskTagRecord, TaskAttachmentRecord } from "@/domain/task/tree";
 
 type Tag = {
   id: string;
@@ -477,7 +477,7 @@ function TagCell({
           className="flex max-w-36 flex-wrap gap-1 text-left outline-none"
         >
           {task.tags.length ? (
-            task.tags.map((tag: any) => (
+            task.tags.map((tag: TaskTagRecord) => (
               <span
                 key={tag.id}
                 className="rounded px-1.5 py-0.5 text-xs"
@@ -495,7 +495,7 @@ function TagCell({
       </PopoverTrigger>
       <PopoverContent className="w-44 p-1" align="start">
         <div className="max-h-48 overflow-auto space-y-1">
-          {available.map((tag: any) => (
+          {available.map((tag: TaskTagRecord) => (
             <label
               key={tag.id}
               className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-xs hover:bg-muted"
@@ -586,7 +586,7 @@ function AttachmentCell({
         </Button>
         {task.attachments.length > 0 && (
           <div className="mt-2 space-y-1 border-t pt-2">
-            {task.attachments.map((file: any) => (
+            {task.attachments.map((file: TaskAttachmentRecord) => (
               <div
                 key={file.id}
                 className="flex items-center justify-between gap-2 text-xs"

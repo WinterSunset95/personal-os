@@ -11,8 +11,10 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { searchTasks } from "@/actions/project.actions";
+import type { TaskTagRecord } from "@/domain/task/tree";
 
 type Result = Awaited<ReturnType<typeof searchTasks>>[number];
+
 export function GlobalSearch() {
   const [open, setOpen] = useState(false);
   const [term, setTerm] = useState("");
@@ -85,7 +87,7 @@ export function GlobalSearch() {
                   </span>
                 </span>
                 <span className="flex flex-wrap justify-end gap-1">
-                  {result.tags.slice(0, 2).map((tag: any) => (
+                  {result.tags.slice(0, 2).map((tag: TaskTagRecord) => (
                     <span
                       key={tag.id}
                       className="rounded px-1.5 py-0.5 text-xs"

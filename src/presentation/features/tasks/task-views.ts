@@ -1,6 +1,7 @@
 import { TaskViewService } from "@/services/task-view.service";
 import { taskQuerySchema } from "@/domain/task/query";
 import { builtInTaskViews, type TaskViewOption } from "@/domain/task/views";
+import { taskViews } from "@/db/schema";
 
 export {
   builtInTaskViews,
@@ -8,6 +9,8 @@ export {
   resolveTaskViewQuery,
   type TaskViewOption,
 } from "@/domain/task/views";
+
+type TaskViewDbRow = typeof taskViews.$inferSelect;
 
 export async function getTaskViews(
   projectId?: string,
@@ -19,7 +22,7 @@ export async function getTaskViews(
       projectId: null,
       builtIn: true,
     })),
-    ...customViews.map((view: any) => ({
+    ...customViews.map((view: TaskViewDbRow) => ({
       ...view,
       query: taskQuerySchema.parse(view.query),
       builtIn: false,

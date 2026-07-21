@@ -1,9 +1,10 @@
 import { TaskViewRepository } from "@/repositories/task-view.repository";
 import { ProjectRepository } from "@/repositories/project.repository";
+import { DbClient } from "@/db";
 import { z } from "zod";
 import { taskViewInputSchema } from "@/domain/task/views";
 
-async function ensureActiveProject(projectId: string, tx?: any) {
+async function ensureActiveProject(projectId: string, tx?: DbClient) {
   const project = await ProjectRepository.findActiveById(projectId, tx);
   if (!project) throw new Error("The project is unavailable.");
 }
