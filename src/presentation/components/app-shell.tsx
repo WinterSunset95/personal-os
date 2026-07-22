@@ -1,7 +1,9 @@
 import Link from "next/link";
-import { Archive, FileText, LayoutDashboard, Layers3 } from "lucide-react";
+import { Archive, FileText, LayoutDashboard, Layers3, LogIn } from "lucide-react";
 import { GlobalSearch } from "@/features/tasks/global-search";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { UserMenu } from "@/components/user-menu";
+import { auth } from "@/auth";
 
 const links = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -10,7 +12,9 @@ const links = [
   { href: "/archive", label: "Archive", icon: Archive },
 ];
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export async function AppShell({ children }: { children: React.ReactNode }) {
+  const session = await auth();
+
   return (
     <div className="min-h-screen">
       <header className="sticky top-0 z-40 border-b border-border/80 bg-background/85 backdrop-blur-xl">
@@ -36,9 +40,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </Link>
             ))}
           </nav>
-          <div className="ml-auto flex items-center gap-1 sm:order-3">
+          <div className="ml-auto flex items-center gap-2 sm:order-3">
             <GlobalSearch />
             <ThemeToggle />
+            {session?.user ? (
+              <UserMenu user={session.user} />
+            ) : (
+              <Link
+                href="/auth/signin"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground shadow-xs hover:bg-primary/90 transition-colors"
+              >
+                <LogIn className="size-3.5" />
+                Sign In
+              </Link>
+            )}
           </div>
         </div>
       </header>

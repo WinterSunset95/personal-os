@@ -21,6 +21,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     verificationTokensTable: verificationTokens,
     authenticatorsTable: authenticators,
   }),
+  pages: {
+    signIn: "/auth/signin",
+    error: "/auth/error",
+  },
   providers: [
     GitHub({
       clientId: process.env.AUTH_GITHUB_ID,

@@ -11,22 +11,22 @@ export async function requireUserId(): Promise<string> {
   }
 
   // In development mode, fallback to demo user if unauthenticated
-  if (process.env.NODE_ENV === "development") {
-    const demoUser = await db.query.users.findFirst();
-    if (demoUser?.id) {
-      return demoUser.id;
-    }
-    const [newUser] = await db
-      .insert(users)
-      .values({
-        email: "admin@personalos.local",
-        name: "Admin User",
-      })
-      .returning();
-    await ProjectService.getOrCreateInbox(newUser.id);
-    return newUser.id;
-  }
+  // if (process.env.NODE_ENV === "development") {
+  //   const demoUser = await db.query.users.findFirst();
+  //   if (demoUser?.id) {
+  //     return demoUser.id;
+  //   }
+  //   const [newUser] = await db
+  //     .insert(users)
+  //     .values({
+  //       email: "admin@personalos.local",
+  //       name: "Admin User",
+  //     })
+  //     .returning();
+  //   await ProjectService.getOrCreateInbox(newUser.id);
+  //   return newUser.id;
+  // }
 
   // In production mode, redirect unauthenticated visitors to sign in page
-  redirect("/api/auth/signin");
+  redirect("/auth/signin");
 }
