@@ -10,9 +10,11 @@ import {
   timestamp,
   uniqueIndex,
   uuid,
+  primaryKey,
 } from "drizzle-orm/pg-core";
 import type { Priority, ProjectStatus, TaskStatus } from "@/types/domain";
 import type { TaskQuery } from "@/domain/task/query";
+import type { AdapterAccountType } from "next-auth/adapters";
 
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true })
@@ -23,10 +25,89 @@ const timestamps = {
     .defaultNow(),
 };
 
+
+export const users = pgTable("user", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  name: text("name"),
+  email: text("email").unique(),
+  emailVerified: timestamp("emailVerified", { mode: "date" }),
+  image: text("image"),
+})
+ 
+export const accounts = pgTable(
+  "account",
+  {
+    userId: text("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    type: text("type").$type<AdapterAccountType>().notNull(),
+    provider: text("provider").notNull(),
+    providerAccountId: text("providerAccountId").notNull(),
+    refresh_token: text("refresh_token"),
+    access_token: text("access_token"),
+    expires_at: integer("expires_at"),
+    token_type: text("token_type"),
+    scope: text("scope"),
+    id_token: text("id_token"),
+    session_state: text("session_state"),
+  },
+  (account) => [
+      primaryKey({
+        columns: [account.provider, account.providerAccountId],
+      })
+  ]
+)
+ 
+export const sessions = pgTable("session", {
+  sessionToken: text("sessionToken").primaryKey(),
+  userId: text("userId")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  expires: timestamp("expires", { mode: "date" }).notNull(),
+})
+ 
+export const verificationTokens = pgTable(
+  "verificationToken",
+  {
+    identifier: text("identifier").notNull(),
+    token: text("token").notNull(),
+    expires: timestamp("expires", { mode: "date" }).notNull(),
+  },
+  (verificationToken) => [
+      primaryKey({
+        columns: [verificationToken.identifier, verificationToken.token],
+      }),
+  ]
+)
+ 
+export const authenticators = pgTable(
+  "authenticator",
+  {
+    credentialID: text("credentialID").notNull().unique(),
+    userId: text("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    providerAccountId: text("providerAccountId").notNull(),
+    credentialPublicKey: text("credentialPublicKey").notNull(),
+    counter: integer("counter").notNull(),
+    credentialDeviceType: text("credentialDeviceType").notNull(),
+    credentialBackedUp: boolean("credentialBackedUp").notNull(),
+    transports: text("transports"),
+  },
+  (authenticator) => [
+      primaryKey({
+        columns: [authenticator.userId, authenticator.credentialID],
+      }),
+  ]
+)
+
 export const projects = pgTable(
   "projects",
   {
     id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     description: text("description"),
     status: text("status").notNull().$type<ProjectStatus>().default("active"),
@@ -37,9 +118,9 @@ export const projects = pgTable(
     ...timestamps,
   },
   (table) => [
-    index("projects_active_updated_idx").on(table.archivedAt, table.updatedAt),
-    uniqueIndex("projects_one_system_inbox_idx")
-      .on(table.isSystemInbox)
+    index("projects_user_active_updated_idx").on(table.userId, table.archivedAt, table.updatedAt),
+    uniqueIndex("projects_user_one_system_inbox_idx")
+      .on(table.userId, table.isSystemInbox)
       .where(sql`${table.isSystemInbox} = true`),
   ],
 );
@@ -48,6 +129,7 @@ export const tasks = pgTable(
   "tasks",
   {
     id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
     projectId: uuid("project_id")
       .notNull()
       .references(() => projects.id, { onDelete: "cascade" }),
@@ -66,13 +148,9 @@ export const tasks = pgTable(
     ...timestamps,
   },
   (table) => [
-    index("tasks_project_active_idx").on(table.projectId, table.archivedAt),
+    index("tasks_user_project_active_idx").on(table.userId, table.projectId, table.archivedAt),
     index("tasks_parent_order_idx").on(table.parentTaskId, table.order),
-    index("tasks_dashboard_idx").on(
-      table.archivedAt,
-      table.status,
-      table.dueDate,
-    ),
+    index("tasks_user_dashboard_idx").on(table.userId, table.archivedAt, table.status, table.dueDate),
   ],
 );
 
@@ -80,6 +158,7 @@ export const taskAttachments = pgTable(
   "task_attachments",
   {
     id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
     taskId: uuid("task_id")
       .notNull()
       .references(() => tasks.id, { onDelete: "cascade" }),
@@ -103,6 +182,7 @@ export const taskViews = pgTable(
   "task_views",
   {
     id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     projectId: uuid("project_id").references(() => projects.id, {
       onDelete: "cascade",
@@ -111,7 +191,7 @@ export const taskViews = pgTable(
     ...timestamps,
   },
   (table) => [
-    index("task_views_scope_updated_idx").on(table.projectId, table.updatedAt),
+    index("task_views_scope_updated_idx").on(table.userId, table.projectId, table.updatedAt),
   ],
 );
 
@@ -119,6 +199,7 @@ export const tags = pgTable(
   "tags",
   {
     id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     color: text("color").notNull().default("#64748b"),
     projectId: uuid("project_id").references(() => projects.id, {
@@ -126,7 +207,7 @@ export const tags = pgTable(
     }),
     ...timestamps,
   },
-  (table) => [index("tags_scope_name_idx").on(table.projectId, table.name)],
+  (table) => [index("tags_scope_name_idx").on(table.userId, table.projectId, table.name)],
 );
 
 export const taskTags = pgTable(
@@ -149,6 +230,7 @@ export const taskPropertyColors = pgTable(
   "task_property_colors",
   {
     id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
     property: text("property").notNull().$type<"status" | "priority">(),
     value: text("value").notNull(),
     color: text("color").notNull(),
@@ -158,6 +240,7 @@ export const taskPropertyColors = pgTable(
   },
   (table) => [
     uniqueIndex("task_property_colors_unique_idx").on(
+      table.userId,
       table.property,
       table.value,
     ),

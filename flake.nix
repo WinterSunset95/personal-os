@@ -3,25 +3,14 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    antigravity-nix = {
-      url = "github:jacopone/antigravity-nix";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
   };
 
-  outputs = { self, nixpkgs, antigravity-nix }: let
+  outputs = { self, nixpkgs }: let
     system = "x86_64-linux";
     pkgs = import nixpkgs {
       inherit system;
       config.allowUnFree = true;
     };
-
-    aider-full = pkgs.aider-chat.overrideAttrs (old: {
-      propagatedBuildInputs = old.propagatedBuildInputs ++ (with pkgs.python3Packages; [
-        google-generativeai
-        playwright
-      ]);
-    });
 
   in {
     devShells.${system}.default = pkgs.mkShell {
@@ -31,14 +20,7 @@
         yarn
         postgresql_16
 
-        aider-full
-        playwright-driver.browsers
-
         graphviz
-
-        # antigravity-nix
-        antigravity-nix.packages.${system}.google-antigravity-cli
-        antigravity-nix.packages.${system}.default
 
         (writeShellScriptBin "db-init" ''
           if [ ! -d "$PGDATA" ]; then
@@ -82,10 +64,8 @@
         export PGDATA="$PWD/.direnv/db"
         export PGPORT=54321
         export DATABASE_URL="postgresql://postgres@localhost:$PGPORT/next_app?sslmode=disable"
+        export AUTH_DRIZZLE_URL=postgres://postgres:postgres@localhost:$PGPORT/db
 
-        export PLAYWRIGHT_BROWSERS_PATH=${pkgs.playwright-driver.browsers}
-        export PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS=true
-        
         echo "⚛️  Next.js + Postgres environment armed."
         echo "💡 Type 'db-start' to engage the database, 'db-stop' to kill it."
       '';
