@@ -123,11 +123,22 @@
   }
   body {
     @apply bg-background text-foreground;
-    background-image: radial-gradient(circle at 50% -20%, color-mix(in oklch, var(--primary) 10%, transparent), transparent 38%);
+    background-image: radial-gradient(
+      circle at 50% -20%,
+      color-mix(in oklch, var(--primary) 10%, transparent),
+      transparent 38%
+    );
   }
   html {
     @apply font-sans;
   }
-  button, a, input, select { @apply transition-colors duration-150; }
-  input[type="checkbox"] { @apply rounded-sm accent-primary; }
+  button,
+  a,
+  input,
+  select {
+    @apply transition-colors duration-150;
+  }
+  input[type="checkbox"] {
+    @apply rounded-sm accent-primary;
+  }
 }

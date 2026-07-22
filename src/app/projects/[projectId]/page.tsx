@@ -4,12 +4,111 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { PriorityBadge, ProjectStatusBadge } from "@/components/status-badge";
 import { formatDate } from "@/lib/date";
-import { archiveProject } from "@/features/projects/actions";
+import { archiveProject } from "@/actions/project.actions";
 import { ProjectForm } from "@/features/projects/project-form";
-import { getProjectDetail, getTaskTableSettings } from "@/features/projects/queries";
+import { ProjectService } from "@/services/project.service";
+import { TaskService } from "@/services/task.service";
 import { TaskTable } from "@/features/tasks/task-table";
 import { TaskListControls } from "@/features/tasks/task-list-controls";
 import { SavedViews } from "@/features/tasks/saved-views";
-import { getTaskViews, resolveTaskViewQuery } from "@/features/tasks/task-views";
+import {
+  getTaskViews,
+  resolveTaskViewQuery,
+} from "@/features/tasks/task-views";
 export const dynamic = "force-dynamic";
-export default async function ProjectDetailPage({ params, searchParams }: { params: Promise<{ projectId: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) { const { projectId } = await params; const raw = await searchParams; const views = await getTaskViews(projectId); const { query, selectedView } = resolveTaskViewQuery(raw, views); const [detail, settings] = await Promise.all([getProjectDetail(projectId, query), getTaskTableSettings(projectId)]); if (!detail) notFound(); const { project, taskTree } = detail; const highlight = Array.isArray(raw.task) ? raw.task[0] : raw.task; return <section className="space-y-8"><header className="space-y-5"><div className="flex flex-wrap items-start justify-between gap-4"><div><p className="mb-3 text-xs font-medium uppercase tracking-[0.16em] text-primary">Project workspace</p><div className="mb-3 flex flex-wrap items-center gap-2"><ProjectStatusBadge status={project.status} /><PriorityBadge priority={project.priority} /></div><h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{project.name}</h1>{project.description && <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{project.description}</p>}</div><div className="flex gap-2"><ProjectForm project={project} />{!project.isSystemInbox && <form action={archiveProject.bind(null, project.id)}><Button type="submit" variant="outline"><Archive className="size-4" />Archive</Button></form>}</div></div><div className="grid gap-3 rounded-2xl border bg-card p-4 shadow-sm sm:grid-cols-3"><div className="rounded-xl bg-muted/55 p-3 sm:col-span-1"><div className="flex justify-between text-sm"><span className="text-muted-foreground">Progress</span><span className="font-semibold text-primary">{project.progress}%</span></div><Progress className="mt-3 h-1.5" value={project.progress} /></div><div className="flex items-center gap-2 rounded-xl px-3 text-sm text-muted-foreground"><ListChecks className="size-4 text-primary" />{project.openTaskCount} open tasks</div><div className="flex items-center gap-2 rounded-xl px-3 text-sm text-muted-foreground"><CalendarDays className="size-4 text-primary" />{formatDate(project.dueDate)}</div></div></header><div className="space-y-4"><div><h2 className="text-xl font-semibold tracking-tight">Tasks</h2><p className="text-sm text-muted-foreground">A clear view of every next step.</p></div><SavedViews query={query} views={views} selectedViewId={selectedView?.id} projectId={project.id} /><TaskListControls query={query} /><TaskTable projectId={project.id} tasks={taskTree} availableTags={settings.availableTags} colors={settings.colors} highlightedTaskId={highlight} /></div></section>; }
+export default async function ProjectDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ projectId: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const { projectId } = await params;
+  const raw = await searchParams;
+  const views = await getTaskViews(projectId);
+  const { query, selectedView } = resolveTaskViewQuery(raw, views);
+  const [detail, settings] = await Promise.all([
+    ProjectService.getProjectDetail(projectId, query),
+    TaskService.getTaskTableSettings(projectId),
+  ]);
+  if (!detail) notFound();
+  const { project, taskTree } = detail;
+  const highlight = Array.isArray(raw.task) ? raw.task[0] : raw.task;
+  return (
+    <section className="space-y-8">
+      <header className="space-y-5">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="mb-3 text-xs font-medium uppercase tracking-[0.16em] text-primary">
+              Project workspace
+            </p>
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <ProjectStatusBadge status={project.status} />
+              <PriorityBadge priority={project.priority} />
+            </div>
+            <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+              {project.name}
+            </h1>
+            {project.description && (
+              <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+                {project.description}
+              </p>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <ProjectForm project={project} />
+            {!project.isSystemInbox && (
+              <form action={archiveProject.bind(null, project.id)}>
+                <Button type="submit" variant="outline">
+                  <Archive className="size-4" />
+                  Archive
+                </Button>
+              </form>
+            )}
+          </div>
+        </div>
+        <div className="grid gap-3 rounded-2xl border bg-card p-4 shadow-sm sm:grid-cols-3">
+          <div className="rounded-xl bg-muted/55 p-3 sm:col-span-1">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Progress</span>
+              <span className="font-semibold text-primary">
+                {project.progress}%
+              </span>
+            </div>
+            <Progress className="mt-3 h-1.5" value={project.progress} />
+          </div>
+          <div className="flex items-center gap-2 rounded-xl px-3 text-sm text-muted-foreground">
+            <ListChecks className="size-4 text-primary" />
+            {project.openTaskCount} open tasks
+          </div>
+          <div className="flex items-center gap-2 rounded-xl px-3 text-sm text-muted-foreground">
+            <CalendarDays className="size-4 text-primary" />
+            {formatDate(project.dueDate)}
+          </div>
+        </div>
+      </header>
+      <div className="space-y-4">
+        <div>
+          <h2 className="text-xl font-semibold tracking-tight">Tasks</h2>
+          <p className="text-sm text-muted-foreground">
+            A clear view of every next step.
+          </p>
+        </div>
+        <SavedViews
+          query={query}
+          views={views}
+          selectedViewId={selectedView?.id}
+          projectId={project.id}
+        />
+        <TaskListControls query={query} />
+        <TaskTable
+          projectId={project.id}
+          tasks={taskTree}
+          availableTags={settings.availableTags}
+          colors={settings.colors}
+          highlightedTaskId={highlight}
+        />
+      </div>
+    </section>
+  );
+}

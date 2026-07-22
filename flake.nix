@@ -3,11 +3,26 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    antigravity-nix = {
+      url = "github:jacopone/antigravity-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { self, nixpkgs }: let
+  outputs = { self, nixpkgs, antigravity-nix }: let
     system = "x86_64-linux";
-    pkgs = nixpkgs.legacyPackages.${system};
+    pkgs = import nixpkgs {
+      inherit system;
+      config.allowUnFree = true;
+    };
+
+    aider-full = pkgs.aider-chat.overrideAttrs (old: {
+      propagatedBuildInputs = old.propagatedBuildInputs ++ (with pkgs.python3Packages; [
+        google-generativeai
+        playwright
+      ]);
+    });
+
   in {
     devShells.${system}.default = pkgs.mkShell {
       buildInputs = with pkgs; [
@@ -16,10 +31,19 @@
         yarn
         postgresql_16
 
+        aider-full
+        playwright-driver.browsers
+
+        graphviz
+
+        # antigravity-nix
+        antigravity-nix.packages.${system}.google-antigravity-cli
+        antigravity-nix.packages.${system}.default
+
         (writeShellScriptBin "db-init" ''
           if [ ! -d "$PGDATA" ]; then
             echo "initdb: Initializing local database cluster..."
-            initdb --no-locale -D "$PGDATA"
+            initdb -U postgres --no-locale -D "$PGDATA"
             echo "host all all 127.0.0.1/32 trust" >> "$PGDATA/pg_hba.conf"
           fi
         '')
@@ -44,6 +68,12 @@
             echo "postgres: No server running."
           fi
         '')
+
+        (writeShellScriptBin "gen-graph" ''
+          echo "📊 Mapping dependency graph for src/..."
+          npx depcruise src --output-type dot | dot -T svg > dependency-graph.svg
+          echo "✅ Graph successfully generated at dependency-graph.svg"
+        '')
       ];
       shellHook = ''
         export NEXT_TELEMETRY_DISABLED=1
@@ -52,6 +82,9 @@
         export PGDATA="$PWD/.direnv/db"
         export PGPORT=54321
         export DATABASE_URL="postgresql://postgres@localhost:$PGPORT/next_app?sslmode=disable"
+
+        export PLAYWRIGHT_BROWSERS_PATH=${pkgs.playwright-driver.browsers}
+        export PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS=true
         
         echo "⚛️  Next.js + Postgres environment armed."
         echo "💡 Type 'db-start' to engage the database, 'db-stop' to kill it."
