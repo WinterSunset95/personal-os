@@ -18,17 +18,21 @@ import {
   getTaskViews,
   resolveTaskViewQuery,
 } from "@/features/tasks/task-views";
+import { requireUserId } from "@/lib/auth-utils";
 
 export const dynamic = "force-dynamic";
+
 export default async function Home({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const userId = await requireUserId();
   const params = await searchParams;
-  const views = await getTaskViews();
+  const views = await getTaskViews(userId);
   const { query, selectedView } = resolveTaskViewQuery(params, views);
-  const data = await TaskService.getDashboardData(query);
+  const data = await TaskService.getDashboardData(userId, query);
+
   return (
     <section className="space-y-7">
       <header className="flex flex-wrap items-end justify-between gap-4 pt-1">
@@ -37,7 +41,7 @@ export default async function Home({
             Personal workspace
           </p>
           <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-            Good morning, Manav.
+            Welcome back.
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
             A calmer view of what deserves your attention today.

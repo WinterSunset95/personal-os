@@ -6,16 +6,21 @@ import {
   getTaskViews,
   resolveTaskViewQuery,
 } from "@/features/tasks/task-views";
+import { requireUserId } from "@/lib/auth-utils";
+
 export const dynamic = "force-dynamic";
+
 export default async function DocumentsPage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const userId = await requireUserId();
   const params = await searchParams;
-  const views = await getTaskViews();
+  const views = await getTaskViews(userId);
   const { query, selectedView } = resolveTaskViewQuery(params, views);
-  const tasks = await TaskService.getDocumentInbox(query);
+  const tasks = await TaskService.getDocumentInbox(userId, query);
+
   return (
     <section className="space-y-7">
       <header>

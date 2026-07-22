@@ -1,21 +1,23 @@
 import { db, type DbClient } from "@/db";
 import { taskViews } from "@/db/schema";
-import { eq, isNull, or, desc } from "drizzle-orm";
+import { and, eq, isNull, or, desc } from "drizzle-orm";
 
 export const TaskViewRepository = {
-  async findViews(projectId: string | null, tx: DbClient = db) {
+  async findViews(projectId: string | null, userId: string, tx: DbClient = db) {
     const scope = projectId
       ? or(isNull(taskViews.projectId), eq(taskViews.projectId, projectId))
       : isNull(taskViews.projectId);
     return tx
       .select()
       .from(taskViews)
-      .where(scope)
+      .where(and(eq(taskViews.userId, userId), scope))
       .orderBy(desc(taskViews.updatedAt));
   },
 
-  async findViewFirst(viewId: string, tx: DbClient = db) {
-    return tx.query.taskViews.findFirst({ where: eq(taskViews.id, viewId) });
+  async findViewFirst(viewId: string, userId: string, tx: DbClient = db) {
+    return tx.query.taskViews.findFirst({
+      where: and(eq(taskViews.id, viewId), eq(taskViews.userId, userId)),
+    });
   },
 
   async createView(
@@ -28,16 +30,19 @@ export const TaskViewRepository = {
 
   async updateView(
     id: string,
+    userId: string,
     data: Partial<Omit<typeof taskViews.$inferInsert, "id">>,
     tx: DbClient = db,
   ) {
     await tx
       .update(taskViews)
       .set({ ...data, updatedAt: new Date() })
-      .where(eq(taskViews.id, id));
+      .where(and(eq(taskViews.id, id), eq(taskViews.userId, userId)));
   },
 
-  async deleteView(id: string, tx: DbClient = db) {
-    await tx.delete(taskViews).where(eq(taskViews.id, id));
+  async deleteView(id: string, userId: string, tx: DbClient = db) {
+    await tx
+      .delete(taskViews)
+      .where(and(eq(taskViews.id, id), eq(taskViews.userId, userId)));
   },
 };

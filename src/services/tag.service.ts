@@ -7,36 +7,36 @@ import { tagInputSchema } from "@/domain/tag/validation";
 
 type TagDbRow = typeof tags.$inferSelect;
 
-async function ensureActiveProject(projectId: string, tx?: DbClient) {
-  const project = await ProjectRepository.findActiveById(projectId, tx);
+async function ensureActiveProject(projectId: string, userId: string, tx?: DbClient) {
+  const project = await ProjectRepository.findActiveById(projectId, userId, tx);
   if (!project) throw new Error("The project is unavailable.");
 }
 
 export const TagService = {
-  async createTag(input: z.input<typeof tagInputSchema>) {
+  async createTag(userId: string, input: z.input<typeof tagInputSchema>) {
     const value = tagInputSchema.parse(input);
-    if (value.projectId) await ensureActiveProject(value.projectId);
-    const tag = await TagRepository.create(value);
+    if (value.projectId) await ensureActiveProject(value.projectId, userId);
+    const tag = await TagRepository.create({ ...value, userId });
     return tag;
   },
 
-  async updateTag(tagId: string, input: z.input<typeof tagInputSchema>) {
+  async updateTag(userId: string, tagId: string, input: z.input<typeof tagInputSchema>) {
     const value = tagInputSchema.parse(input);
-    await TagRepository.update(tagId, value);
+    await TagRepository.update(tagId, userId, value);
     return tagId;
   },
 
-  async deleteTag(tagId: string) {
-    const tag = await TagRepository.findById(tagId);
+  async deleteTag(userId: string, tagId: string) {
+    const tag = await TagRepository.findById(tagId, userId);
     if (!tag) return null;
-    await TagRepository.delete(tagId);
+    await TagRepository.delete(tagId, userId);
     return tag.projectId ?? undefined;
   },
 
-  async setTaskTags(taskId: string, projectId: string, tagIds: string[]) {
+  async setTaskTags(userId: string, taskId: string, projectId: string, tagIds: string[]) {
     const ids = z.array(z.string().uuid()).max(20).parse(tagIds);
-    await ensureActiveProject(projectId);
-    const available = await TagRepository.findTagsByIds(ids);
+    await ensureActiveProject(projectId, userId);
+    const available = await TagRepository.findTagsByIds(ids, userId);
     if (
       available.some(
         (tag: TagDbRow) => tag.projectId && tag.projectId !== projectId,

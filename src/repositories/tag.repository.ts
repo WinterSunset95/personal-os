@@ -5,21 +5,26 @@ import { and, eq, isNull, or, inArray } from "drizzle-orm";
 type DB = typeof db | any;
 
 export const TagRepository = {
-  async findById(id: string, tx: DB = db) {
+  async findById(id: string, userId: string, tx: DB = db) {
     return tx.query.tags.findFirst({
-      where: eq(tags.id, id),
+      where: and(eq(tags.id, id), eq(tags.userId, userId)),
     });
   },
 
-  async findAllForProjectSettings(projectId: string, tx: DB = db) {
+  async findAllForProjectSettings(projectId: string, userId: string, tx: DB = db) {
     return tx
       .select()
       .from(tags)
-      .where(or(isNull(tags.projectId), eq(tags.projectId, projectId)))
+      .where(
+        and(
+          eq(tags.userId, userId),
+          or(isNull(tags.projectId), eq(tags.projectId, projectId)),
+        ),
+      )
       .orderBy(tags.name);
   },
 
-  async findTagsForTasks(taskIds: string[], tx: DB = db) {
+  async findTagsForTasks(taskIds: string[], userId: string, tx: DB = db) {
     if (!taskIds.length) return [];
     return tx
       .select({
@@ -31,7 +36,12 @@ export const TagRepository = {
       })
       .from(taskTags)
       .innerJoin(tags, eq(taskTags.tagId, tags.id))
-      .where(inArray(taskTags.taskId, taskIds));
+      .where(
+        and(
+          inArray(taskTags.taskId, taskIds),
+          eq(tags.userId, userId),
+        ),
+      );
   },
 
   async create(
@@ -44,17 +54,20 @@ export const TagRepository = {
 
   async update(
     id: string,
+    userId: string,
     data: Partial<Omit<typeof tags.$inferInsert, "id">>,
     tx: DB = db,
   ) {
     await tx
       .update(tags)
       .set({ ...data, updatedAt: new Date() })
-      .where(eq(tags.id, id));
+      .where(and(eq(tags.id, id), eq(tags.userId, userId)));
   },
 
-  async delete(id: string, tx: DB = db) {
-    await tx.delete(tags).where(eq(tags.id, id));
+  async delete(id: string, userId: string, tx: DB = db) {
+    await tx
+      .delete(tags)
+      .where(and(eq(tags.id, id), eq(tags.userId, userId)));
   },
 
   async setTaskTags(taskId: string, tagIds: string[], tx: DB = db) {
@@ -66,8 +79,11 @@ export const TagRepository = {
     }
   },
 
-  async findTagsByIds(ids: string[], tx: DB = db) {
+  async findTagsByIds(ids: string[], userId: string, tx: DB = db) {
     if (!ids.length) return [];
-    return tx.select().from(tags).where(inArray(tags.id, ids));
+    return tx
+      .select()
+      .from(tags)
+      .where(and(inArray(tags.id, ids), eq(tags.userId, userId)));
   },
 };

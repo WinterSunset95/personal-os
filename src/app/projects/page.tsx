@@ -3,11 +3,13 @@ import { ProjectCard } from "@/features/projects/project-card";
 import { ProjectForm } from "@/features/projects/project-form";
 import { ProjectService } from "@/services/project.service";
 import type { ProjectSummary } from "@/domain/project/logic";
+import { requireUserId } from "@/lib/auth-utils";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProjectsPage() {
-  const projects = await ProjectService.getProjectSummaries();
+  const userId = await requireUserId();
+  const projects = await ProjectService.getProjectSummaries(userId);
   return (
     <section className="space-y-8">
       <div className="flex flex-wrap items-end justify-between gap-4">

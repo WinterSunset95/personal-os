@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { requireUserId } from "@/lib/auth-utils";
 import { ProjectService } from "@/services/project.service";
 import { TaskService } from "@/services/task.service";
 import { TagService } from "@/services/tag.service";
@@ -21,7 +22,8 @@ function refresh(projectId?: string | null) {
 export async function createProject(
   input: z.input<typeof projectInputSchema>,
 ): Promise<string> {
-  const projectId = await ProjectService.createProject(input);
+  const userId = await requireUserId();
+  const projectId = await ProjectService.createProject(userId, input);
   refresh(projectId);
   return projectId;
 }
@@ -30,12 +32,14 @@ export async function updateProject(
   projectId: string,
   input: z.input<typeof projectInputSchema>,
 ): Promise<void> {
-  await ProjectService.updateProject(projectId, input);
+  const userId = await requireUserId();
+  await ProjectService.updateProject(userId, projectId, input);
   refresh(projectId);
 }
 
 export async function archiveProject(projectId: string): Promise<void> {
-  await ProjectService.archiveProject(projectId);
+  const userId = await requireUserId();
+  await ProjectService.archiveProject(userId, projectId);
   refresh(projectId);
 }
 
@@ -43,19 +47,22 @@ export async function quickCaptureTask(
   title: string,
   projectId?: string,
 ): Promise<void> {
-  const result = await TaskService.quickCaptureTask(title, projectId);
+  const userId = await requireUserId();
+  const result = await TaskService.quickCaptureTask(userId, title, projectId);
   refresh(result.projectId);
 }
 
 export async function restoreProject(projectId: string): Promise<void> {
-  await ProjectService.restoreProject(projectId);
+  const userId = await requireUserId();
+  await ProjectService.restoreProject(userId, projectId);
   refresh(projectId);
 }
 
 export async function createTask(
   input: z.input<typeof taskInputSchema>,
 ): Promise<void> {
-  const result = await TaskService.createTask(input);
+  const userId = await requireUserId();
+  const result = await TaskService.createTask(userId, input);
   refresh(result.projectId);
 }
 
@@ -63,7 +70,8 @@ export async function updateTask(
   taskId: string,
   input: z.input<typeof taskInputSchema>,
 ): Promise<void> {
-  const result = await TaskService.updateTask(taskId, input);
+  const userId = await requireUserId();
+  const result = await TaskService.updateTask(userId, taskId, input);
   refresh(result.projectId);
 }
 
@@ -72,7 +80,8 @@ export async function toggleTaskCompletion(
   projectId: string,
   completed: boolean,
 ): Promise<void> {
-  await TaskService.toggleTaskCompletion(taskId, projectId, completed);
+  const userId = await requireUserId();
+  await TaskService.toggleTaskCompletion(userId, taskId, projectId, completed);
   refresh(projectId);
 }
 
@@ -80,7 +89,8 @@ export async function archiveTask(
   taskId: string,
   projectId: string,
 ): Promise<void> {
-  await TaskService.archiveTask(taskId, projectId);
+  const userId = await requireUserId();
+  await TaskService.archiveTask(userId, taskId, projectId);
   refresh(projectId);
 }
 
@@ -88,7 +98,8 @@ export async function restoreTask(
   taskId: string,
   projectId: string,
 ): Promise<void> {
-  await TaskService.restoreTask(taskId, projectId);
+  const userId = await requireUserId();
+  await TaskService.restoreTask(userId, taskId, projectId);
   refresh(projectId);
 }
 
@@ -96,14 +107,16 @@ export async function removeTaskAttachment(
   attachmentId: string,
   projectId: string,
 ): Promise<void> {
-  await AttachmentService.removeAttachment(attachmentId, projectId);
+  const userId = await requireUserId();
+  await AttachmentService.removeAttachment(attachmentId, projectId, userId);
   refresh(projectId);
 }
 
 export async function createTag(
   input: z.input<typeof tagInputSchema>,
 ): Promise<void> {
-  const tag = await TagService.createTag(input);
+  const userId = await requireUserId();
+  const tag = await TagService.createTag(userId, input);
   refresh(tag.projectId ?? undefined);
 }
 
@@ -111,13 +124,15 @@ export async function updateTag(
   tagId: string,
   input: z.input<typeof tagInputSchema>,
 ): Promise<void> {
-  await TagService.updateTag(tagId, input);
+  const userId = await requireUserId();
+  await TagService.updateTag(userId, tagId, input);
   const value = tagInputSchema.parse(input);
   refresh(value.projectId ?? undefined);
 }
 
 export async function deleteTag(tagId: string): Promise<void> {
-  const projectId = await TagService.deleteTag(tagId);
+  const userId = await requireUserId();
+  const projectId = await TagService.deleteTag(userId, tagId);
   refresh(projectId ?? undefined);
 }
 
@@ -126,7 +141,8 @@ export async function setTaskTags(
   projectId: string,
   tagIds: string[],
 ): Promise<void> {
-  await TagService.setTaskTags(taskId, projectId, tagIds);
+  const userId = await requireUserId();
+  await TagService.setTaskTags(userId, taskId, projectId, tagIds);
   refresh(projectId);
 }
 
@@ -136,7 +152,8 @@ export async function updateTaskProperty(
   property: "status" | "priority" | "dueDate" | "focusDate",
   value: string,
 ): Promise<void> {
-  await TaskService.updateTaskProperty(taskId, projectId, property, value);
+  const userId = await requireUserId();
+  await TaskService.updateTaskProperty(userId, taskId, projectId, property, value);
   refresh(projectId);
 }
 
@@ -145,7 +162,8 @@ export async function updatePropertyColor(
   value: string,
   color: string,
 ): Promise<void> {
-  await TaskService.updatePropertyColor(property, value, color);
+  const userId = await requireUserId();
+  await TaskService.updatePropertyColor(userId, property, value, color);
   refresh();
 }
 
@@ -153,10 +171,12 @@ export async function duplicateTask(
   taskId: string,
   projectId: string,
 ): Promise<void> {
-  await TaskService.duplicateTask(taskId, projectId);
+  const userId = await requireUserId();
+  await TaskService.duplicateTask(userId, taskId, projectId);
   refresh(projectId);
 }
 
 export async function searchTasks(term: string) {
-  return TaskService.searchTasks(term);
+  const userId = await requireUserId();
+  return TaskService.searchTasks(userId, term);
 }

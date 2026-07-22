@@ -15,7 +15,10 @@ import {
   getTaskViews,
   resolveTaskViewQuery,
 } from "@/features/tasks/task-views";
+import { requireUserId } from "@/lib/auth-utils";
+
 export const dynamic = "force-dynamic";
+
 export default async function ProjectDetailPage({
   params,
   searchParams,
@@ -23,13 +26,14 @@ export default async function ProjectDetailPage({
   params: Promise<{ projectId: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const userId = await requireUserId();
   const { projectId } = await params;
   const raw = await searchParams;
-  const views = await getTaskViews(projectId);
+  const views = await getTaskViews(userId, projectId);
   const { query, selectedView } = resolveTaskViewQuery(raw, views);
   const [detail, settings] = await Promise.all([
-    ProjectService.getProjectDetail(projectId, query),
-    TaskService.getTaskTableSettings(projectId),
+    ProjectService.getProjectDetail(userId, projectId, query),
+    TaskService.getTaskTableSettings(userId, projectId),
   ]);
   if (!detail) notFound();
   const { project, taskTree } = detail;

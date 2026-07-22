@@ -1,6 +1,7 @@
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { TaskService } from "@/services/task.service";
 import { AttachmentService } from "@/services/attachment.service";
+import { requireUserId } from "@/lib/auth-utils";
 
 const allowedContentTypes = [
   "application/pdf",
@@ -19,6 +20,7 @@ const maxSize = 25 * 1024 * 1024;
 export async function POST(request: Request) {
   const body = (await request.json()) as HandleUploadBody;
   try {
+    const userId = await requireUserId();
     const response = await handleUpload({
       body,
       request,
@@ -28,7 +30,7 @@ export async function POST(request: Request) {
           fileSize?: number;
         };
         if (!payload.taskId) throw new Error("A task is required for uploads.");
-        const task = await TaskService.findTaskById(payload.taskId);
+        const task = await TaskService.findTaskById(payload.taskId, userId);
         if (
           !task ||
           task.archivedAt ||
@@ -40,7 +42,7 @@ export async function POST(request: Request) {
           allowedContentTypes,
           maximumSizeInBytes: maxSize,
           addRandomSuffix: true,
-          tokenPayload: JSON.stringify(payload),
+          tokenPayload: JSON.stringify({ ...payload, userId }),
         };
       },
       onUploadCompleted: async ({ blob, tokenPayload }) => {
@@ -48,9 +50,11 @@ export async function POST(request: Request) {
           taskId?: string;
           fileName?: string;
           fileSize?: number;
+          userId?: string;
         };
-        if (!payload.taskId) throw new Error("A task is required for uploads.");
+        if (!payload.taskId || !payload.userId) throw new Error("Task and User ID required.");
         await AttachmentService.createAttachment({
+          userId: payload.userId,
           taskId: payload.taskId,
           pathname: blob.pathname,
           blobUrl: blob.url,

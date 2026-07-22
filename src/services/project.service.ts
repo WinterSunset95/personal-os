@@ -28,31 +28,33 @@ type AttachmentDbRow = typeof taskAttachments.$inferSelect;
 type TagDbRow = typeof tags.$inferSelect;
 
 export const ProjectService = {
-  async createProject(input: z.input<typeof projectInputSchema>) {
+  async createProject(userId: string, input: z.input<typeof projectInputSchema>) {
     const value = projectInputSchema.parse(input);
-    const project = await ProjectRepository.create(value);
+    const project = await ProjectRepository.create({ ...value, userId });
     return project.id;
   },
 
   async updateProject(
+    userId: string,
     projectId: string,
     input: z.input<typeof projectInputSchema>,
   ) {
     const value = projectInputSchema.parse(input);
-    await ProjectRepository.update(projectId, value);
+    await ProjectRepository.update(projectId, userId, value);
     return projectId;
   },
 
-  async archiveProject(projectId: string) {
-    const project = await ProjectRepository.findById(projectId);
+  async archiveProject(userId: string, projectId: string) {
+    const project = await ProjectRepository.findById(projectId, userId);
     if (!canArchiveProject(project))
       throw new Error("The System Inbox cannot be archived.");
     const now = new Date();
     await TransactionRepository.runTransaction(async (tx) => {
-      await ProjectRepository.archive(projectId, now, tx);
-      const projectTasks = await TaskRepository.findAllByProject(projectId, tx);
+      await ProjectRepository.archive(projectId, userId, now, tx);
+      const projectTasks = await TaskRepository.findAllByProject(projectId, userId, tx);
       await TaskRepository.archiveMany(
         projectTasks.map((t: TaskDbRow) => t.id),
+        userId,
         now,
         tx,
       );
@@ -60,23 +62,25 @@ export const ProjectService = {
     return projectId;
   },
 
-  async restoreProject(projectId: string) {
+  async restoreProject(userId: string, projectId: string) {
     await TransactionRepository.runTransaction(async (tx) => {
-      await ProjectRepository.restore(projectId, tx);
-      const projectTasks = await TaskRepository.findAllByProject(projectId, tx);
+      await ProjectRepository.restore(projectId, userId, tx);
+      const projectTasks = await TaskRepository.findAllByProject(projectId, userId, tx);
       await TaskRepository.restoreMany(
         projectTasks.map((t: TaskDbRow) => t.id),
+        userId,
         tx,
       );
     });
     return projectId;
   },
 
-  async getOrCreateInbox(tx?: DbClient) {
-    const existing = await ProjectRepository.findSystemInbox(tx);
+  async getOrCreateInbox(userId: string, tx?: DbClient) {
+    const existing = await ProjectRepository.findSystemInbox(userId, tx);
     if (existing) return existing;
     return ProjectRepository.create(
       {
+        userId,
         name: "Inbox",
         description: "Quickly captured tasks.",
         status: "active",
@@ -87,12 +91,17 @@ export const ProjectService = {
     );
   },
 
-  async withAttachmentCounts(taskRows: TaskDbRow[], tx?: DbClient): Promise<TaskRecord[]> {
+  async withAttachmentCounts(
+    userId: string,
+    taskRows: TaskDbRow[],
+    tx?: DbClient,
+  ): Promise<TaskRecord[]> {
     if (!taskRows.length) return [];
     const [attachments, tagRows] = await Promise.all([
-      AttachmentRepository.findAll(tx),
+      AttachmentRepository.findAll(userId, tx),
       TagRepository.findTagsForTasks(
         taskRows.map((task: TaskDbRow) => task.id),
+        userId,
         tx,
       ),
     ]);
@@ -123,12 +132,12 @@ export const ProjectService = {
     }));
   },
 
-  async getProjectSummaries(): Promise<ProjectSummary[]> {
+  async getProjectSummaries(userId: string): Promise<ProjectSummary[]> {
     const [projectRows, taskRows] = await Promise.all([
-      ProjectRepository.findAllActive(),
-      TaskRepository.findAllActive(),
+      ProjectRepository.findAllActive(userId),
+      TaskRepository.findAllActive(userId),
     ]);
-    const tasksWithAttachments = await this.withAttachmentCounts(taskRows);
+    const tasksWithAttachments = await this.withAttachmentCounts(userId, taskRows);
     return projectRows.map((project: ProjectDbRow) =>
       summarizeProject(
         project,
@@ -138,13 +147,14 @@ export const ProjectService = {
   },
 
   async getProjectDetail(
+    userId: string,
     projectId: string,
     query: TaskQuery = defaultTaskQuery,
   ) {
-    const project = await ProjectRepository.findActiveById(projectId);
+    const project = await ProjectRepository.findActiveById(projectId, userId);
     if (!project) return null;
-    const taskRows = await TaskRepository.findAllActiveByProject(projectId);
-    const tasksWithAttachments = await this.withAttachmentCounts(taskRows);
+    const taskRows = await TaskRepository.findAllActiveByProject(projectId, userId);
+    const tasksWithAttachments = await this.withAttachmentCounts(userId, taskRows);
     const taskTree = toTaskTree(tasksWithAttachments, query);
     return {
       project: summarizeProject(project, tasksWithAttachments),
@@ -154,10 +164,10 @@ export const ProjectService = {
     };
   },
 
-  async getArchivedProjects() {
+  async getArchivedProjects(userId: string) {
     const [archivedProjects, archivedTasks] = await Promise.all([
-      ProjectRepository.findAllArchived(),
-      TaskRepository.findAllArchived(),
+      ProjectRepository.findAllArchived(userId),
+      TaskRepository.findAllArchived(userId),
     ]);
     return { archivedProjects, archivedTasks };
   },

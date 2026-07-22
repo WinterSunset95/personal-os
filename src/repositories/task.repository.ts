@@ -3,48 +3,62 @@ import { tasks } from "@/db/schema";
 import { and, eq, isNull, isNotNull, inArray, max, desc } from "drizzle-orm";
 
 export const TaskRepository = {
-  async findById(id: string, tx: DbClient = db) {
+  async findById(id: string, userId: string, tx: DbClient = db) {
     return tx.query.tasks.findFirst({
-      where: eq(tasks.id, id),
+      where: and(eq(tasks.id, id), eq(tasks.userId, userId)),
     });
   },
 
-  async findActiveById(id: string, projectId: string, tx: DbClient = db) {
+  async findActiveById(id: string, projectId: string, userId: string, tx: DbClient = db) {
     return tx.query.tasks.findFirst({
       where: and(
         eq(tasks.id, id),
         eq(tasks.projectId, projectId),
+        eq(tasks.userId, userId),
         isNull(tasks.archivedAt),
       ),
     });
   },
 
-  async findAllActive(tx: DbClient = db) {
-    return tx.select().from(tasks).where(isNull(tasks.archivedAt));
-  },
-
-  async findAllArchived(tx: DbClient = db) {
+  async findAllActive(userId: string, tx: DbClient = db) {
     return tx
       .select()
       .from(tasks)
-      .where(isNotNull(tasks.archivedAt))
+      .where(and(eq(tasks.userId, userId), isNull(tasks.archivedAt)));
+  },
+
+  async findAllArchived(userId: string, tx: DbClient = db) {
+    return tx
+      .select()
+      .from(tasks)
+      .where(and(eq(tasks.userId, userId), isNotNull(tasks.archivedAt)))
       .orderBy(desc(tasks.archivedAt));
   },
 
-  async findAllActiveByProject(projectId: string, tx: DbClient = db) {
+  async findAllActiveByProject(projectId: string, userId: string, tx: DbClient = db) {
     return tx
       .select()
       .from(tasks)
-      .where(and(eq(tasks.projectId, projectId), isNull(tasks.archivedAt)));
+      .where(
+        and(
+          eq(tasks.projectId, projectId),
+          eq(tasks.userId, userId),
+          isNull(tasks.archivedAt),
+        ),
+      );
   },
 
-  async findAllByProject(projectId: string, tx: DbClient = db) {
-    return tx.select().from(tasks).where(eq(tasks.projectId, projectId));
+  async findAllByProject(projectId: string, userId: string, tx: DbClient = db) {
+    return tx
+      .select()
+      .from(tasks)
+      .where(and(eq(tasks.projectId, projectId), eq(tasks.userId, userId)));
   },
 
   async getMaxOrder(
     projectId: string,
     parentTaskId: string | null,
+    userId: string,
     tx: DbClient = db,
   ) {
     const [last] = await tx
@@ -53,6 +67,7 @@ export const TaskRepository = {
       .where(
         and(
           eq(tasks.projectId, projectId),
+          eq(tasks.userId, userId),
           parentTaskId
             ? eq(tasks.parentTaskId, parentTaskId)
             : isNull(tasks.parentTaskId),
@@ -71,17 +86,19 @@ export const TaskRepository = {
 
   async update(
     id: string,
+    userId: string,
     data: Partial<Omit<typeof tasks.$inferInsert, "id">>,
     tx: DbClient = db,
   ) {
     await tx
       .update(tasks)
       .set({ ...data, updatedAt: new Date() })
-      .where(eq(tasks.id, id));
+      .where(and(eq(tasks.id, id), eq(tasks.userId, userId)));
   },
 
   async archiveMany(
     ids: string[],
+    userId: string,
     archivedAt: Date = new Date(),
     tx: DbClient = db,
   ) {
@@ -89,32 +106,33 @@ export const TaskRepository = {
     await tx
       .update(tasks)
       .set({ archivedAt, updatedAt: archivedAt })
-      .where(inArray(tasks.id, ids));
+      .where(and(inArray(tasks.id, ids), eq(tasks.userId, userId)));
   },
 
   async archiveAllByProject(
     projectId: string,
+    userId: string,
     archivedAt: Date = new Date(),
     tx: DbClient = db,
   ) {
     await tx
       .update(tasks)
       .set({ archivedAt, updatedAt: archivedAt })
-      .where(eq(tasks.projectId, projectId));
+      .where(and(eq(tasks.projectId, projectId), eq(tasks.userId, userId)));
   },
 
-  async restoreMany(ids: string[], tx: DbClient = db) {
+  async restoreMany(ids: string[], userId: string, tx: DbClient = db) {
     if (!ids.length) return;
     await tx
       .update(tasks)
       .set({ archivedAt: null, updatedAt: new Date() })
-      .where(inArray(tasks.id, ids));
+      .where(and(inArray(tasks.id, ids), eq(tasks.userId, userId)));
   },
 
-  async restoreAllByProject(projectId: string, tx: DbClient = db) {
+  async restoreAllByProject(projectId: string, userId: string, tx: DbClient = db) {
     await tx
       .update(tasks)
       .set({ archivedAt: null, updatedAt: new Date() })
-      .where(eq(tasks.projectId, projectId));
+      .where(and(eq(tasks.projectId, projectId), eq(tasks.userId, userId)));
   },
 };

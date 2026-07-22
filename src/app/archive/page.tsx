@@ -6,6 +6,7 @@ import {
 import { ProjectService } from "@/services/project.service";
 import { formatDate } from "@/lib/date";
 import { projects, tasks } from "@/db/schema";
+import { requireUserId } from "@/lib/auth-utils";
 
 type ProjectDbRow = typeof projects.$inferSelect;
 type TaskDbRow = typeof tasks.$inferSelect;
@@ -13,11 +14,13 @@ type TaskDbRow = typeof tasks.$inferSelect;
 export const dynamic = "force-dynamic";
 
 export default async function ArchivePage() {
+  const userId = await requireUserId();
   const { archivedProjects, archivedTasks } =
-    await ProjectService.getArchivedProjects();
+    await ProjectService.getArchivedProjects(userId);
   const taskProjects = new Set<string>(
     archivedTasks.map((task: TaskDbRow) => task.projectId),
   );
+
   return (
     <section className="space-y-7">
       <header>

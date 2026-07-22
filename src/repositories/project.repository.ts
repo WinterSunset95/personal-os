@@ -5,37 +5,41 @@ import { and, eq, isNull, isNotNull, desc } from "drizzle-orm";
 type DB = typeof db | any;
 
 export const ProjectRepository = {
-  async findById(id: string, tx: DB = db) {
+  async findById(id: string, userId: string, tx: DB = db) {
     return tx.query.projects.findFirst({
-      where: eq(projects.id, id),
+      where: and(eq(projects.id, id), eq(projects.userId, userId)),
     });
   },
 
-  async findActiveById(id: string, tx: DB = db) {
+  async findActiveById(id: string, userId: string, tx: DB = db) {
     return tx.query.projects.findFirst({
-      where: and(eq(projects.id, id), isNull(projects.archivedAt)),
+      where: and(
+        eq(projects.id, id),
+        eq(projects.userId, userId),
+        isNull(projects.archivedAt),
+      ),
     });
   },
 
-  async findSystemInbox(tx: DB = db) {
+  async findSystemInbox(userId: string, tx: DB = db) {
     return tx.query.projects.findFirst({
-      where: eq(projects.isSystemInbox, true),
+      where: and(eq(projects.userId, userId), eq(projects.isSystemInbox, true)),
     });
   },
 
-  async findAllActive(tx: DB = db) {
+  async findAllActive(userId: string, tx: DB = db) {
     return tx
       .select()
       .from(projects)
-      .where(isNull(projects.archivedAt))
+      .where(and(eq(projects.userId, userId), isNull(projects.archivedAt)))
       .orderBy(desc(projects.updatedAt));
   },
 
-  async findAllArchived(tx: DB = db) {
+  async findAllArchived(userId: string, tx: DB = db) {
     return tx
       .select()
       .from(projects)
-      .where(isNotNull(projects.archivedAt))
+      .where(and(eq(projects.userId, userId), isNotNull(projects.archivedAt)))
       .orderBy(desc(projects.archivedAt));
   },
 
@@ -49,27 +53,28 @@ export const ProjectRepository = {
 
   async update(
     id: string,
+    userId: string,
     data: Partial<Omit<typeof projects.$inferInsert, "id">>,
     tx: DB = db,
   ) {
     await tx
       .update(projects)
       .set({ ...data, updatedAt: new Date() })
-      .where(eq(projects.id, id));
+      .where(and(eq(projects.id, id), eq(projects.userId, userId)));
   },
 
-  async archive(id: string, archivedAt: Date = new Date(), tx: DB = db) {
+  async archive(id: string, userId: string, archivedAt: Date = new Date(), tx: DB = db) {
     await tx
       .update(projects)
       .set({ archivedAt, updatedAt: archivedAt })
-      .where(eq(projects.id, id));
+      .where(and(eq(projects.id, id), eq(projects.userId, userId)));
   },
 
-  async restore(id: string, tx: DB = db) {
+  async restore(id: string, userId: string, tx: DB = db) {
     const now = new Date();
     await tx
       .update(projects)
       .set({ archivedAt: null, updatedAt: now })
-      .where(eq(projects.id, id));
+      .where(and(eq(projects.id, id), eq(projects.userId, userId)));
   },
 };
