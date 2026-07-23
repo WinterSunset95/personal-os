@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import { ArrowRight, Mail, ShieldAlert, Sparkles } from "lucide-react";
@@ -8,29 +8,51 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { authClient } from "@/lib/auth-client";
 
 export default function SignInPage() {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") || "/";
   const error = searchParams.get("error");
 
-  const [email, setEmail] = useState("admin@personalos.local");
+  const [email, setEmail] = useState("demouser@personalos.local");
   const [loading, setLoading] = useState(false);
 
   const handleCredentialsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
     setLoading(true);
-    await signIn("credentials", {
-      email,
-      callbackUrl,
-    });
+    const { data, error } = await authClient.signIn.email({
+      // name: "Demo User",
+      email: email,
+      password: "Demo#12345",
+      callbackURL: "/",
+    })
+    console.log(data, error)
+    if (error?.code == "INVALID_EMAIL_OR_PASSWORD") {
+      const { data, error } = await authClient.signUp.email({
+        name: "Demo User",
+        email: email,
+        password: "Demo#12345",
+        callbackURL: "/",
+      })
+      console.log(data, error)
+    }
     setLoading(false);
   };
 
   const handleGithubSignIn = async () => {
     setLoading(true);
-    await signIn("github", { callbackUrl });
+    const { data, error } = await authClient.signIn.social({
+      provider: "github",
+    })
+    if (data) {
+      setLoading(false)
+    }
+    if (error) {
+      setLoading(false)
+    }
+    console.log(data, error)
   };
 
   return (
@@ -103,7 +125,7 @@ export default function SignInPage() {
                   <Input
                     id="email"
                     type="email"
-                    placeholder="admin@personalos.local"
+                    placeholder="demouser@personalos.local"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="pl-9 h-11"

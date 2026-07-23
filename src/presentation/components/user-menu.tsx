@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { authClient } from "@/lib/auth-client";
 
 interface UserMenuProps {
   user: {
@@ -71,7 +72,16 @@ export function UserMenu({ user }: UserMenuProps) {
         <DropdownMenuSeparator />
         <DropdownMenuItem
           className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive"
-          onClick={() => signOut({ callbackUrl: "/auth/signin" })}
+          onClick={() => {
+            authClient.signOut({
+              fetchOptions: {
+                onSuccess: () => {
+                  window.location.reload();
+                },
+                onError: () => alert("For some reason, logout failed")
+              }
+            })
+          }}
         >
           <LogOut className="mr-2 size-4" />
           <span>Log out</span>

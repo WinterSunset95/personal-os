@@ -3,9 +3,12 @@ import { redirect } from "next/navigation";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { ProjectService } from "@/services/project.service";
+import { headers } from "next/headers";
 
 export async function requireUserId(): Promise<string> {
-  const session = await auth();
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
   if (session?.user?.id) {
     return session.user.id;
   }

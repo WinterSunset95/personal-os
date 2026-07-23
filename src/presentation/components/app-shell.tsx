@@ -4,6 +4,7 @@ import { GlobalSearch } from "@/features/tasks/global-search";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { UserMenu } from "@/components/user-menu";
 import { auth } from "@/auth";
+import { headers } from "next/headers";
 
 const links = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -13,7 +14,10 @@ const links = [
 ];
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
-  const session = await auth();
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+  console.log(session)
 
   return (
     <div className="min-h-screen">
